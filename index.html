@@ -49,8 +49,11 @@
     /* Zwaardere tekst in chat & input */
     --w-chat: 500;
 
-    /* Afstand tussen top-streep en content */
+    /* Afstand tussen content-secties */
     --content-gap: 20px;
+
+    /* UI schaal (20% kleiner) */
+    --ui-scale: 0.8;
   }
 
   * { box-sizing: border-box; }
@@ -83,9 +86,9 @@
   .sb-overlay{
     position: fixed; inset:0;
     background: rgba(8,10,20,.35);
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(6px);
     display:none;
-    z-index: 1200;                         /* boven composer (1000) */
+    z-index: 1200; /* boven content/composer, onder sidebar (1300) */
   }
   .sb-overlay.show{ display:block; }
 
@@ -121,43 +124,32 @@
   .icon-btn:hover{ background:#f3f4f8; }
   .icon-btn svg{ width:14px; height:14px; }
 
-  /* Inline edit input */
-  .hi-edit{
-    font: inherit;
-    font-weight: 600;
-    font-size: 14px;
-    width: 100%;
-    padding: 6px 8px;
-    border-radius: 8px;
-    border: 1px solid var(--sb-border);
-    outline: none;
-    background:#fff;
-  }
-  .hi-edit:focus{ box-shadow: 0 0 0 3px rgba(124,58,237,.12); }
-
   /* ---------- Main content ---------- */
   .wrap{ max-width: 1160px; margin: 0 auto; padding: 20px 24px 140px; }
 
-  .top{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:16px; padding: 6px 0 8px;
-    border-bottom: 1px solid var(--line);
-    background: #fff;
-    margin-bottom: var(--content-gap);
-  }
-
-  .brand-wrap{ display:flex; align-items:center; gap:10px; }
-  .brand-logo{ height:32px; width:auto; border-radius:50%; object-fit:cover; }
-  .brand{ font-weight:var(--w-bold); font-size:20px; letter-spacing:.2px; color:#ink; }
-
-  .top-actions{ display:flex; align-items:center; gap:10px; }
+  /* Fixed MENU-knop (altijd zichtbaar). Z-index < overlay, zodat hij achter de blur valt bij open sidebar. */
   .sb-toggle{
-    border:1px solid var(--line); border-radius:12px; padding:8px 10px;
-    background:#fff; cursor:pointer; gap:8px; align-items:center; display:inline-flex;
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    z-index: 1100; /* lager dan overlay (1200) → valt achter de blur */
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:8px 10px;
+    background:#fff;
+    cursor:pointer;
+    gap:8px;
+    align-items:center;
+    display:inline-flex;
     box-shadow: 0 2px 10px rgba(16, 18, 27, .08);
   }
+  .sb-toggle svg{ width:16px; height:16px; }
+  /* Als sidebar open is, schuif de knop mee zodat hij niet eronder valt */
+  body.sb-open .sb-toggle{
+    right: calc(24px + var(--sb-w));
+  }
 
-  /* Hero, Cards */
+  /* Hero, Cards (inhoud) */
   .hero{ margin: 56px auto 28px; text-align: center; max-width: 860px; padding:0 20px 20px 0; }
   .hero h1{ margin:0 0 10px; font-size: clamp(30px, 5.2vw, 44px); font-weight:800; letter-spacing:.2px; color:#826FE8; position:relative; display:inline-block; overflow:hidden; }
   .hero h1::after{ content:""; position:absolute; top:0; left:-75%; width:50%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.6),transparent); transform:skewX(-20deg); animation:shine 2.8s infinite ease-in-out; }
@@ -183,7 +175,7 @@
     margin: 12px 0;
   }
 
-  /* Assistant: links (geen avatar meer zichtbaar) */
+  /* Assistant: links */
   .msg.assistant{ justify-content:flex-start; }
 
   /* User: rechts */
@@ -229,10 +221,10 @@
   .composer{
     position: fixed;
     left: 50%;
-    bottom: 16px;
+    bottom: 20px; /* 20px vanaf onderkant */
     transform: translateX(-50%);
     width: min(980px, 96vw);
-    z-index: 1000;
+    z-index: 1000; /* onder overlay (1200), boven content */
     transition:
       filter .18s ease,
       transform .18s ease,
@@ -245,7 +237,22 @@
     filter: blur(0.2px);
   }
 
-  .bar{ width:100%; display:grid; grid-template-columns:48px 1fr 56px; align-items:center; gap:12px; background:#f4f6fb; border:1px solid rgba(0,0,0,.06); border-radius:999px; padding:10px 10px 10px 12px; box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px; transition: opacity .2s ease, filter .2s ease; }
+  /* ✅ Bar zelf óók 20% kleiner */
+  .composer .bar{
+    width:100%;
+    display:grid;
+    grid-template-columns:48px 1fr 56px;
+    align-items:center;
+    gap:12px;
+    background:#f4f6fb;
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:999px;
+    padding:10px 10px 10px 12px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px;
+    transition: opacity .2s ease, filter .2s ease, transform .2s ease;
+    transform: scale(var(--ui-scale));             /* 0.8 */
+    transform-origin: center;                       /* mooi gecentreerd schalen */
+  }
   .bar.disabled{ opacity:.6; filter:grayscale(.1); pointer-events:none; }
 
   .circle{ width:36px; height:36px; border-radius:999px; background:#e9ecf4; display:grid; place-items:center; transition: all .25s ease; cursor:pointer; border:1px solid rgba(0,0,0,.06); }
@@ -283,6 +290,12 @@
   .btn-danger:hover{ background: color-mix(in oklab, var(--send-purple) 88%, #000); border-color: color-mix(in oklab, var(--send-purple) 88%, #000); }
 
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+  /* ===== 20% kleiner: schaal ALLEEN de content, niet de fixed elementen ===== */
+  .content.scaled{
+    transform: scale(var(--ui-scale)); /* 0.8 */
+    transform-origin: top center;
+  }
 </style>
 </head>
 
@@ -311,102 +324,97 @@
   </aside>
   <div class="sb-overlay" id="sbOverlay"></div>
 
+  <!-- Fixed Menu-knop (buiten de geschaalde content) -->
+  <button class="sb-toggle" id="sbToggle" aria-controls="sidebar" aria-expanded="false">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path d="M4 7h16M4 12h16M4 17h16" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    Menu
+  </button>
+
   <!-- ===== Main page ===== -->
   <div class="page">
     <div class="wrap">
-      <!-- Top bar -->
-      <div class="top">
-        <div class="brand-wrap">
-          <img src="Paars.png" class="brand-logo" alt="Eva logo" />
-          <div class="brand">Eva</div>
-        </div>
-        <div class="top-actions">
-          <button class="sb-toggle" id="sbToggle" aria-controls="sidebar" aria-expanded="false">
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-            Menu
-          </button>
-        </div>
-      </div>
+      <!-- Alles wat visueel 20% kleiner moet -->
+      <div class="content scaled">
+        <!-- Hero -->
+        <section class="hero" id="hero">
+          <h1>How can I help you today?</h1>
+          <p>Quick answers to HR, IT, and operations questions. Click a card or ask your question below.</p>
+        </section>
 
-      <!-- Hero -->
-      <section class="hero" id="hero">
-        <h1>How can I help you today?</h1>
-        <p>Quick answers to HR, IT, and operations questions. Click a card or ask your question below.</p>
-      </section>
+        <!-- Cards -->
+        <section class="cards" id="cards">
+          <article class="card" data-prompt="How do I request time off and what is the approval timeline?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Request Time Off</h3>
+            <p>Process, approvals, and lead times.</p>
+          </article>
 
-      <!-- Cards -->
-      <section class="cards" id="cards">
-        <article class="card" data-prompt="How do I request time off and what is the approval timeline?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Request Time Off</h3>
-          <p>Process, approvals, and lead times.</p>
-        </article>
+          <article class="card" data-prompt="Where can I find my payslip and when is payday?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Payslip & Salary</h3>
+            <p>Portal access, payday, and common issues.</p>
+          </article>
 
-        <article class="card" data-prompt="Where can I find my payslip and when is payday?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Payslip & Salary</h3>
-          <p>Portal access, payday, and common issues.</p>
-        </article>
+          <article class="card" data-prompt="How do I submit an expense claim and which receipts are required?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Expenses</h3>
+            <p>Step-by-step submission and processing times.</p>
+          </article>
 
-        <article class="card" data-prompt="How do I submit an expense claim and which receipts are required?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Expenses</h3>
-          <p>Step-by-step submission and processing times.</p>
-        </article>
+          <article class="card" data-prompt="How do I reset my password and regain access to email?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>IT: Password Reset</h3>
+            <p>Self-service reset or via the service desk.</p>
+          </article>
 
-        <article class="card" data-prompt="How do I reset my password and regain access to email?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>IT: Password Reset</h3>
-          <p>Self-service reset or via the service desk.</p>
-        </article>
+          <article class="card" data-prompt="How do I report sick and what are the availability rules?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Sick Leave</h3>
+            <p>Who to notify, by what time, and next steps.</p>
+          </article>
 
-        <article class="card" data-prompt="How do I report sick and what are the availability rules?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Sick Leave</h3>
-          <p>Who to notify, by what time, and next steps.</p>
-        </article>
+          <article class="card" data-prompt="How does travel reimbursement work and what is the mileage rate?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Travel Costs</h3>
+            <p>Public transport, mileage, and claiming.</p>
+          </article>
 
-        <article class="card" data-prompt="How does travel reimbursement work and what is the mileage rate?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Travel Costs</h3>
-          <p>Public transport, mileage, and claiming.</p>
-        </article>
+          <article class="card" data-prompt="Where can I find the employee handbook / data privacy policy (GDPR)?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Policies & GDPR</h3>
+            <p>Handbook, remote work policy, and security.</p>
+          </article>
 
-        <article class="card" data-prompt="Where can I find the employee handbook / data privacy policy (GDPR)?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Policies & GDPR</h3>
-          <p>Handbook, remote work policy, and security.</p>
-        </article>
+          <article class="card" data-prompt="How do I request parental or maternity leave and what are the timelines?">
+            <div class="arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <h3>Parental Leave</h3>
+            <p>Notice periods and required documents.</p>
+          </article>
+        </section>
 
-        <article class="card" data-prompt="How do I request parental or maternity leave and what are the timelines?">
-          <div class="arrow" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Parental Leave</h3>
-          <p>Notice periods and required documents.</p>
-        </article>
-      </section>
+        <!-- Chatlog -->
+        <div class="chatlog" id="chatlog" aria-live="polite"></div>
+      </div><!-- /.content.scaled -->
 
-      <!-- Chatlog -->
-      <div class="chatlog" id="chatlog" aria-live="polite"></div>
-
-      <!-- Composer -->
+      <!-- Composer (fixed) -->
       <div class="composer" id="composer" aria-hidden="false">
         <div class="bar" id="bar">
           <button class="circle clear-chat" id="clearChatBtn" title="Clear chat (Ctrl+Backspace)" aria-haspopup="dialog" aria-controls="popup" aria-expanded="false">
@@ -514,8 +522,8 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
-  // ---------- API (endpoint aangepast naar AI Foundry project) ----------
-  const API_BASE = 'https://conta-mgl1a7ru-eastus2.services.ai.azure.com/api/projects/conta-mgl1a7ru-eastus2_project';
+  // ---------- API (Postman Mock) ----------
+  const API_BASE = 'https://994a2b08-4664-4fb4-a6e2-1626b9acbcbb.mock.pstmn.io';
   const API_KEY  = 'PMAK-68f7c04b34fd37000115634a-1064c47cc2b1fcb0ace3dd2c11db4efeb1';
 
   // 1) User -> GET /chat?Value=<message>
@@ -882,16 +890,6 @@
 
     const wrap = document.createElement('div');
     wrap.className = 'bubble-wrap';
-
-    /* ❌ Avatar verwijderd voor assistant-berichten
-    if (who === 'assistant') {
-      const avatar = document.createElement('img');
-      avatar.className = 'avatar';
-      avatar.src = 'Paars.png';
-      avatar.alt = 'Eva';
-      msg.appendChild(avatar);
-    }
-    */
 
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
