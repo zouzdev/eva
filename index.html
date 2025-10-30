@@ -49,11 +49,12 @@
     /* Zwaardere tekst in chat & input */
     --w-chat: 500;
 
-    /* Afstand tussen content-secties */
-    --content-gap: 20px;
-
     /* UI schaal (20% kleiner) */
     --ui-scale: 0.8;
+
+    /* Composer metriek (voor dynamische onderruimte) */
+    --composer-h: 64px;   /* benaderde buitenmaat van .bar */
+    --composer-gap: 12px; /* optische ruimte boven de bar */
   }
 
   * { box-sizing: border-box; }
@@ -78,7 +79,7 @@
     padding: 14px 12px 22px;
     overflow-y: auto;
     z-index: 1300;
-    transform: translateX(102%);          /* standaard: ingeklapt */
+    transform: translateX(102%);
     transition: transform .18s ease;
   }
   .history-sidebar.show{ transform: translateX(0); }
@@ -92,7 +93,7 @@
   }
   .sb-overlay.show{ display:block; }
 
-  .page{ margin-right: 0; min-height: 100dvh; transition: margin-right .18s ease; }
+  .page{ min-height: 100dvh; transition: margin-right .18s ease; }
   body.sb-open .page{ margin-right: var(--sb-w); }
 
   .sb-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 6px 6px 10px; }
@@ -125,14 +126,19 @@
   .icon-btn svg{ width:14px; height:14px; }
 
   /* ---------- Main content ---------- */
-  .wrap{ max-width: 1160px; margin: 0 auto; padding: 20px 24px 140px; }
+  .wrap{
+    max-width: 1160px;
+    margin: 0 auto;
+    /* Dynamisch genoeg ruimte onderin voor de geschaalde composer */
+    padding: 20px 24px calc((var(--composer-h) * var(--ui-scale)) + var(--composer-gap) + max(20px, env(safe-area-inset-bottom)));
+  }
 
   /* Fixed MENU-knop (altijd zichtbaar). Z-index < overlay, zodat hij achter de blur valt bij open sidebar. */
   .sb-toggle{
     position: fixed;
     top: 16px;
     right: 24px;
-    z-index: 1100; /* lager dan overlay (1200) → valt achter de blur */
+    z-index: 1100; /* lager dan overlay (1200) → achter de blur */
     border:1px solid var(--line);
     border-radius:12px;
     padding:8px 10px;
@@ -144,12 +150,9 @@
     box-shadow: 0 2px 10px rgba(16, 18, 27, .08);
   }
   .sb-toggle svg{ width:16px; height:16px; }
-  /* Als sidebar open is, schuif de knop mee zodat hij niet eronder valt */
-  body.sb-open .sb-toggle{
-    right: calc(24px + var(--sb-w));
-  }
+  body.sb-open .sb-toggle{ right: calc(24px + var(--sb-w)); }
 
-  /* Hero, Cards (inhoud) */
+  /* Hero, Cards */
   .hero{ margin: 56px auto 28px; text-align: center; max-width: 860px; padding:0 20px 20px 0; }
   .hero h1{ margin:0 0 10px; font-size: clamp(30px, 5.2vw, 44px); font-weight:800; letter-spacing:.2px; color:#826FE8; position:relative; display:inline-block; overflow:hidden; }
   .hero h1::after{ content:""; position:absolute; top:0; left:-75%; width:50%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.6),transparent); transform:skewX(-20deg); animation:shine 2.8s infinite ease-in-out; }
@@ -170,50 +173,17 @@
   /* ---------- Chatlog: THEME ---------- */
   .chatlog{ max-width:980px; margin:8px auto 0; padding:0 8px; }
 
-  .msg{
-    display:flex; gap:10px; align-items:flex-end;
-    margin: 12px 0;
-  }
-
-  /* Assistant: links */
+  .msg{ display:flex; gap:10px; align-items:flex-end; margin: 12px 0; }
   .msg.assistant{ justify-content:flex-start; }
-
-  /* User: rechts */
   .msg.user{ justify-content:flex-end; }
 
-  .msg .bubble-wrap{
-    max-width: 72%;
-    display: inline-flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .bubble{
-    padding: 14px 16px;
-    border-radius: 18px;
-    line-height: 1.55;
-    font-weight: var(--w-chat);
-  }
+  .msg .bubble-wrap{ max-width: 72%; display: inline-flex; flex-direction: column; gap: 6px; }
+  .bubble{ padding: 14px 16px; border-radius: 18px; line-height: 1.55; font-weight: var(--w-chat); }
 
-  .msg.user .bubble{
-    background: linear-gradient(180deg, var(--user-grad-a), var(--user-grad-b));
-    color: #fff;
-    border: none;
-    box-shadow: var(--user-shadow);
-  }
-  .msg.assistant .bubble{
-    background: var(--assistant-bg);
-    border: 1px solid var(--assistant-border);
-    color: #0f1117;
-    box-shadow: var(--assistant-shadow);
-  }
+  .msg.user .bubble{ background: linear-gradient(180deg, var(--user-grad-a), var(--user-grad-b)); color: #fff; border: none; box-shadow: var(--user-shadow); }
+  .msg.assistant .bubble{ background: var(--assistant-bg); border: 1px solid var(--assistant-border); color: #0f1117; box-shadow: var(--assistant-shadow); }
 
-  /* Meta onder/naast de bubble: alleen gebruiker */
-  .meta{
-    font-size: 12px;
-    color: var(--time);
-    display:flex; align-items:center; gap:8px;
-    padding: 0 4px 0 6px;
-  }
+  .meta{ font-size: 12px; color: var(--time); display:flex; align-items:center; gap:8px; padding: 0 4px 0 6px; }
   .tick{ display:inline-flex; align-items:center; gap:4px; color: var(--tick); }
   .tick svg{ width:14px; height:14px; display:block; }
 
@@ -221,23 +191,19 @@
   .composer{
     position: fixed;
     left: 50%;
-    bottom: 20px; /* 20px vanaf onderkant */
+    bottom: max(20px, env(safe-area-inset-bottom)); /* 20px vanaf onderkant */
     transform: translateX(-50%);
     width: min(980px, 96vw);
     z-index: 1000; /* onder overlay (1200), boven content */
-    transition:
-      filter .18s ease,
-      transform .18s ease,
-      width .18s ease;
+    transition: filter .18s ease, transform .18s ease, width .18s ease;
   }
-  /* Sidebar open = dezelfde links-shift als de content */
   body.sb-open .composer{
     transform: translateX(calc(-50% - (var(--sb-w) / 2)));
     width: min(980px, calc(96vw - var(--sb-w)));
     filter: blur(0.2px);
   }
 
-  /* ✅ Bar zelf óók 20% kleiner */
+  /* Bar óók 20% kleiner */
   .composer .bar{
     width:100%;
     display:grid;
@@ -250,8 +216,8 @@
     padding:10px 10px 10px 12px;
     box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px;
     transition: opacity .2s ease, filter .2s ease, transform .2s ease;
-    transform: scale(var(--ui-scale));             /* 0.8 */
-    transform-origin: center;                       /* mooi gecentreerd schalen */
+    transform: scale(var(--ui-scale)); /* 0.8 */
+    transform-origin: center;
   }
   .bar.disabled{ opacity:.6; filter:grayscale(.1); pointer-events:none; }
 
@@ -828,7 +794,7 @@
   }
   function clearChat() {
     if (chatlog) chatlog.innerHTML = '';
-    try { localStorage.removeItem('LS_CHATCACHE'); } catch(_) {}
+    try { localStorage.removeItem('LS_CHATCACHE'); } catch(_){}
     const id = getCurrentId();
     const sessions = loadSessions();
     const idx = sessions.findIndex(s=>s.id===id);
@@ -896,7 +862,6 @@
     bubble.textContent = text;
     wrap.appendChild(bubble);
 
-    // Meta: alleen voor gebruiker (tijd + check)
     if (who === 'user') {
       const meta = document.createElement('div');
       meta.className = 'meta';
@@ -938,12 +903,8 @@
     sending = true;
 
     try{
-      // 1) log gebruiker via GET
-      await apiGetUserMessage(text);
-
-      // 2) haal antwoord via POST
-      const reply = await apiPostAssistantReply(text);
-
+      await apiGetUserMessage(text);                 // 1) log
+      const reply = await apiPostAssistantReply(text); // 2) antwoord
       addMessage(String(reply), 'assistant', new Date());
       persistMessage(String(reply), 'assistant');
 
