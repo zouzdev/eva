@@ -12,7 +12,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
 
 <style>
-  /* ---------- Base ---------- */
   :root{
     --bg: #ffffff;
     --ink: #0e0e10;
@@ -28,7 +27,7 @@
     --w-base: 300;
     --w-bold: 700;
 
-    /* Sidebar tokens */
+    /* Sidebar */
     --sb-w: 280px;
     --sb-bg: #fafbff;
     --sb-border: rgba(0,0,0,.06);
@@ -36,7 +35,7 @@
     --sb-item-hover: #f3f5ff;
     --sb-active: rgba(124,58,237,.10);
 
-    /* Chat theme */
+    /* Chat */
     --user-grad-a: #8C7CF0;
     --user-grad-b: #6F56E6;
     --assistant-bg: #ffffff;
@@ -46,15 +45,10 @@
     --time: #a6adbd;
     --tick: #e8e8ff;
 
-    /* Zwaardere tekst in chat & input */
     --w-chat: 500;
 
-    /* UI schaal (20% kleiner) */
+    /* 20% kleiner */
     --ui-scale: 0.8;
-
-    /* Composer metriek (voor dynamische onderruimte) */
-    --composer-h: 64px;   /* benaderde buitenmaat van .bar */
-    --composer-gap: 12px; /* optische ruimte boven de bar */
   }
 
   * { box-sizing: border-box; }
@@ -63,7 +57,6 @@
     margin:0;
     font-family: var(--font);
     font-weight: var(--w-base);
-    font-optical-sizing: auto;
     color: var(--ink);
     background-color:#FFF;
     transition: margin-right .18s ease;
@@ -71,7 +64,7 @@
   a{ color: inherit; text-decoration: none; }
   .hidden { display: none !important; }
 
-  /* ---------- Collapsible History Sidebar (RIGHT) ---------- */
+  /* Sidebar rechts */
   .history-sidebar{
     position: fixed; inset: 0 0 0 auto; width: var(--sb-w);
     background: var(--sb-bg);
@@ -89,7 +82,7 @@
     background: rgba(8,10,20,.35);
     backdrop-filter: blur(6px);
     display:none;
-    z-index: 1200; /* boven content/composer, onder sidebar (1300) */
+    z-index: 1200; /* boven content/composer, onder sidebar */
   }
   .sb-overlay.show{ display:block; }
 
@@ -115,7 +108,7 @@
   }
   .history-item:hover{ background: var(--sb-item-hover); }
   .history-item.active{ background: var(--sb-active); border-color: rgba(124,58,237,.28); }
-  .history-item .hi-icon{ width:26px; height:26px; display:grid; place-items:center; border-radius: 8px; background:#eef0fb; flex:0 0 auto; }
+  .history-item .hi-icon{ width:26px; height:26px; display:grid; place-items:center; border-radius: 8px; background:#eef0fb; }
   .history-item .hi-meta{ min-width:0; }
   .history-item .hi-title{ font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .history-item .hi-time{ font-size:12px; color:#7a8190; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -125,20 +118,21 @@
   .icon-btn:hover{ background:#f3f4f8; }
   .icon-btn svg{ width:14px; height:14px; }
 
-  /* ---------- Main content ---------- */
+  /* Main content */
   .wrap{
     max-width: 1160px;
     margin: 0 auto;
-    /* Dynamisch genoeg ruimte onderin voor de geschaalde composer */
-    padding: 20px 24px calc((var(--composer-h) * var(--ui-scale)) + var(--composer-gap) + max(20px, env(safe-area-inset-bottom)));
+    /* ⬇️ Exact 30px ruimte + eventuele safe area;
+       geen extra reservering voor bar-hoogte meer */
+    padding: 20px 24px calc(30px + env(safe-area-inset-bottom));
   }
 
-  /* Fixed MENU-knop (altijd zichtbaar). Z-index < overlay, zodat hij achter de blur valt bij open sidebar. */
+  /* MENU-knop fixed; onder overlay z-index zodat hij achter de blur valt */
   .sb-toggle{
     position: fixed;
     top: 16px;
     right: 24px;
-    z-index: 1100; /* lager dan overlay (1200) → achter de blur */
+    z-index: 1100; /* overlay is 1200 */
     border:1px solid var(--line);
     border-radius:12px;
     padding:8px 10px;
@@ -152,7 +146,7 @@
   .sb-toggle svg{ width:16px; height:16px; }
   body.sb-open .sb-toggle{ right: calc(24px + var(--sb-w)); }
 
-  /* Hero, Cards */
+  /* Hero & cards */
   .hero{ margin: 56px auto 28px; text-align: center; max-width: 860px; padding:0 20px 20px 0; }
   .hero h1{ margin:0 0 10px; font-size: clamp(30px, 5.2vw, 44px); font-weight:800; letter-spacing:.2px; color:#826FE8; position:relative; display:inline-block; overflow:hidden; }
   .hero h1::after{ content:""; position:absolute; top:0; left:-75%; width:50%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.6),transparent); transform:skewX(-20deg); animation:shine 2.8s infinite ease-in-out; }
@@ -170,31 +164,27 @@
   .card h3{ margin:8px 0 6px; font-size:18px; font-weight:var(--w-bold); letter-spacing:.2px; }
   .card p{ margin:0; color:#7a8190; font-size:13.5px; line-height:1.5; max-width:92%; }
 
-  /* ---------- Chatlog: THEME ---------- */
+  /* Chatlog */
   .chatlog{ max-width:980px; margin:8px auto 0; padding:0 8px; }
-
   .msg{ display:flex; gap:10px; align-items:flex-end; margin: 12px 0; }
   .msg.assistant{ justify-content:flex-start; }
   .msg.user{ justify-content:flex-end; }
-
   .msg .bubble-wrap{ max-width: 72%; display: inline-flex; flex-direction: column; gap: 6px; }
   .bubble{ padding: 14px 16px; border-radius: 18px; line-height: 1.55; font-weight: var(--w-chat); }
-
   .msg.user .bubble{ background: linear-gradient(180deg, var(--user-grad-a), var(--user-grad-b)); color: #fff; border: none; box-shadow: var(--user-shadow); }
   .msg.assistant .bubble{ background: var(--assistant-bg); border: 1px solid var(--assistant-border); color: #0f1117; box-shadow: var(--assistant-shadow); }
-
   .meta{ font-size: 12px; color: var(--time); display:flex; align-items:center; gap:8px; padding: 0 4px 0 6px; }
   .tick{ display:inline-flex; align-items:center; gap:4px; color: var(--tick); }
   .tick svg{ width:14px; height:14px; display:block; }
 
-  /* ---------- Composer (input) ---------- */
+  /* Composer (fixed) */
   .composer{
     position: fixed;
     left: 50%;
-    bottom: max(20px, env(safe-area-inset-bottom)); /* 20px vanaf onderkant */
+    bottom: max(20px, env(safe-area-inset-bottom));
     transform: translateX(-50%);
     width: min(980px, 96vw);
-    z-index: 1000; /* onder overlay (1200), boven content */
+    z-index: 1000;
     transition: filter .18s ease, transform .18s ease, width .18s ease;
   }
   body.sb-open .composer{
@@ -202,8 +192,6 @@
     width: min(980px, calc(96vw - var(--sb-w)));
     filter: blur(0.2px);
   }
-
-  /* Bar óók 20% kleiner */
   .composer .bar{
     width:100%;
     display:grid;
@@ -215,9 +203,9 @@
     border-radius:999px;
     padding:10px 10px 10px 12px;
     box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px;
-    transition: opacity .2s ease, filter .2s ease, transform .2s ease;
-    transform: scale(var(--ui-scale)); /* 0.8 */
+    transform: scale(var(--ui-scale));  /* 20% kleiner */
     transform-origin: center;
+    transition: opacity .2s ease, filter .2s ease, transform .2s ease;
   }
   .bar.disabled{ opacity:.6; filter:grayscale(.1); pointer-events:none; }
 
@@ -257,16 +245,16 @@
 
   .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
-  /* ===== 20% kleiner: schaal ALLEEN de content, niet de fixed elementen ===== */
+  /* Hele content 20% kleiner (niet de fixed elementen) */
   .content.scaled{
-    transform: scale(var(--ui-scale)); /* 0.8 */
+    transform: scale(var(--ui-scale));
     transform-origin: top center;
   }
 </style>
 </head>
 
 <body>
-  <!-- ===== Right collapsible sidebar ===== -->
+  <!-- Sidebar -->
   <aside class="history-sidebar" id="sidebar" aria-label="Geschiedenis">
     <div class="sb-header">
       <div class="sb-title">Geschiedenis</div>
@@ -290,7 +278,7 @@
   </aside>
   <div class="sb-overlay" id="sbOverlay"></div>
 
-  <!-- Fixed Menu-knop (buiten de geschaalde content) -->
+  <!-- Menu-knop -->
   <button class="sb-toggle" id="sbToggle" aria-controls="sidebar" aria-expanded="false">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
       <path d="M4 7h16M4 12h16M4 17h16" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
@@ -298,10 +286,8 @@
     Menu
   </button>
 
-  <!-- ===== Main page ===== -->
   <div class="page">
     <div class="wrap">
-      <!-- Alles wat visueel 20% kleiner moet -->
       <div class="content scaled">
         <!-- Hero -->
         <section class="hero" id="hero">
@@ -311,76 +297,21 @@
 
         <!-- Cards -->
         <section class="cards" id="cards">
-          <article class="card" data-prompt="How do I request time off and what is the approval timeline?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Request Time Off</h3>
-            <p>Process, approvals, and lead times.</p>
-          </article>
-
-          <article class="card" data-prompt="Where can I find my payslip and when is payday?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Payslip & Salary</h3>
-            <p>Portal access, payday, and common issues.</p>
-          </article>
-
-          <article class="card" data-prompt="How do I submit an expense claim and which receipts are required?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Expenses</h3>
-            <p>Step-by-step submission and processing times.</p>
-          </article>
-
-          <article class="card" data-prompt="How do I reset my password and regain access to email?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>IT: Password Reset</h3>
-            <p>Self-service reset or via the service desk.</p>
-          </article>
-
-          <article class="card" data-prompt="How do I report sick and what are the availability rules?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Sick Leave</h3>
-            <p>Who to notify, by what time, and next steps.</p>
-          </article>
-
-          <article class="card" data-prompt="How does travel reimbursement work and what is the mileage rate?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Travel Costs</h3>
-            <p>Public transport, mileage, and claiming.</p>
-          </article>
-
-          <article class="card" data-prompt="Where can I find the employee handbook / data privacy policy (GDPR)?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Policies & GDPR</h3>
-            <p>Handbook, remote work policy, and security.</p>
-          </article>
-
-          <article class="card" data-prompt="How do I request parental or maternity leave and what are the timelines?">
-            <div class="arrow" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <h3>Parental Leave</h3>
-            <p>Notice periods and required documents.</p>
-          </article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Request Time Off</h3><p>Process, approvals, and lead times.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Payslip & Salary</h3><p>Portal access, payday, and common issues.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Expenses</h3><p>Step-by-step submission and processing times.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>IT: Password Reset</h3><p>Self-service reset or via the service desk.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Sick Leave</h3><p>Who to notify, by what time, and next steps.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Travel Costs</h3><p>Public transport, mileage, and claiming.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Policies & GDPR</h3><p>Handbook, remote work policy, and security.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Parental Leave</h3><p>Notice periods and required documents.</p></article>
         </section>
 
         <!-- Chatlog -->
         <div class="chatlog" id="chatlog" aria-live="polite"></div>
-      </div><!-- /.content.scaled -->
+      </div>
 
-      <!-- Composer (fixed) -->
+      <!-- Composer -->
       <div class="composer" id="composer" aria-hidden="false">
         <div class="bar" id="bar">
           <button class="circle clear-chat" id="clearChatBtn" title="Clear chat (Ctrl+Backspace)" aria-haspopup="dialog" aria-controls="popup" aria-expanded="false">
@@ -438,14 +369,12 @@
   const composer = document.getElementById('composer');
   const bar = document.getElementById('bar');
 
-  // Clear chat modal
   const popup = document.getElementById('popup');
   const popupContent = popup.querySelector('.popup-content');
   const clearChatBtn = document.getElementById('clearChatBtn');
   const cancelBtn = document.getElementById('cancelBtn');
   const confirmClearBtn = document.getElementById('clearBtn');
 
-  // Delete-session modal
   const delPopup = document.getElementById('delPopup');
   const delPopupContent = delPopup.querySelector('.popup-content');
   const delCancelBtn = document.getElementById('delCancelBtn');
@@ -454,7 +383,7 @@
 
   const sendBtn = document.getElementById('sendBtn');
 
-  // Sidebar elements
+  // Sidebar
   const listToday = document.getElementById('list-today');
   const listYesterday = document.getElementById('list-yesterday');
   const listWeek = document.getElementById('list-week');
@@ -463,10 +392,10 @@
   const sidebar = document.getElementById('sidebar');
   const sbOverlay = document.getElementById('sbOverlay');
 
-  // ---------- Storage helpers ----------
+  // Storage
   const LS_SESSIONS = 'eva-history';
   const LS_CURRENT = 'eva-current';
-  const LS_CHATCACHE = 'eva-chat'; // legacy
+  const LS_CHATCACHE = 'eva-chat';
 
   const now = () => new Date().toISOString();
   const uid = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
@@ -478,7 +407,6 @@
   const getCurrentId = () => localStorage.getItem(LS_CURRENT);
   const setCurrentId = (id) => localStorage.setItem(LS_CURRENT, id || '');
 
-  // ---------- Helper: nette strings ----------
   function toDisplayString(val){
     if (val == null) return '';
     if (typeof val === 'string') return val;
@@ -488,50 +416,30 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
-  // ---------- API (Postman Mock) ----------
+  // API (mock)
   const API_BASE = 'https://994a2b08-4664-4fb4-a6e2-1626b9acbcbb.mock.pstmn.io';
   const API_KEY  = 'PMAK-68f7c04b34fd37000115634a-1064c47cc2b1fcb0ace3dd2c11db4efeb1';
 
-  // 1) User -> GET /chat?Value=<message>
   async function apiGetUserMessage(message){
     const url = `${API_BASE}/chat?Value=${encodeURIComponent(message)}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY
-      }
-    });
+    const res = await fetch(url, { method: 'GET', headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY } });
     const raw = await res.text().catch(()=> '');
-    let data = raw;
-    try { data = JSON.parse(raw); } catch {}
-    if(!res.ok){
-      throw new Error(`GET /chat ${res.status} ${res.statusText}: ${toDisplayString(data)}`);
-    }
+    let data = raw; try { data = JSON.parse(raw); } catch {}
+    if(!res.ok){ throw new Error(`GET /chat ${res.status} ${res.statusText}: ${toDisplayString(data)}`); }
     return data;
   }
-
-  // 2) Assistant <- POST /reply { message }
   async function apiPostAssistantReply(message){
     const res = await fetch(`${API_BASE}/reply`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY
-      },
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY },
       body: JSON.stringify({ message })
     });
     const raw = await res.text().catch(()=> '');
-    let data = raw;
-    try { data = JSON.parse(raw); } catch {}
-    if(!res.ok){
-      throw new Error(`POST /reply ${res.status} ${res.statusText}: ${toDisplayString(data)}`);
-    }
+    let data = raw; try { data = JSON.parse(raw); } catch {}
+    if(!res.ok){ throw new Error(`POST /reply ${res.status} ${res.statusText}: ${toDisplayString(data)}`); }
     if (typeof data === 'string') return data;
     return data.reply || data.message || data.answer || 'OK';
   }
 
-  // ---------- UI helpers ----------
   function hideCards(){ cardsSection?.classList.add('hidden'); }
   function showCards(){ cardsSection?.classList.remove('hidden'); }
   function hideHero(){ hero?.classList.add('hidden'); }
@@ -551,7 +459,6 @@
     }
   }
 
-  // ---------- Sidebar toggle ----------
   function openSidebar(){
     sidebar.classList.add('show');
     sbOverlay.classList.add('show');
@@ -567,7 +474,6 @@
   sbToggle?.addEventListener('click', ()=> sidebar.classList.contains('show') ? closeSidebar() : openSidebar());
   sbOverlay?.addEventListener('click', closeSidebar);
 
-  // ---------- History rendering ----------
   function formatTime(iso){
     const d = new Date(iso);
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -579,10 +485,8 @@
     const res = { today: [], yesterday: [], week: [] };
     const nowD = new Date();
     const todayStr = nowD.toDateString();
-
     const yD = new Date(nowD); yD.setDate(nowD.getDate()-1);
     const yStr = yD.toDateString();
-
     const weekAgo = new Date(nowD); weekAgo.setDate(nowD.getDate()-7);
 
     sessions
@@ -634,14 +538,12 @@
 
         item.appendChild(ico); item.appendChild(meta); item.appendChild(actions);
 
-        // open session
         item.addEventListener('click', (e)=>{
           if(e.target.closest('.icon-btn')) return;
           openSession(s.id);
           closeSidebar();
         });
 
-        // rename
         edit.addEventListener('click', (e)=>{
           e.stopPropagation();
           beginInlineRename(item, s.id);
@@ -651,7 +553,6 @@
           beginInlineRename(item, s.id);
         });
 
-        // delete
         del.addEventListener('click', (e)=>{
           e.stopPropagation();
           openDeleteModal(s.id);
@@ -666,12 +567,10 @@
     fill(listWeek, grouped.week);
   }
 
-  // ---------- Inline rename ----------
   function beginInlineRename(itemEl, sessionId){
     const titleEl = itemEl.querySelector('.hi-title');
     if(!titleEl) return;
     const oldTitle = titleEl.textContent || '';
-
     if(itemEl.querySelector('.hi-edit')) return;
 
     const input = document.createElement('input');
@@ -705,7 +604,6 @@
     input.addEventListener('blur', onBlur);
   }
 
-  // ---------- Sessions / Messages ----------
   function ensureCurrentSession(){
     let id = getCurrentId();
     let sessions = loadSessions();
@@ -758,7 +656,6 @@
     renderHistory();
   }
 
-  // ---------- Cards -> fill input ----------
   cards.forEach(card => {
     card.addEventListener('click', () => {
       const prompt =
@@ -771,7 +668,7 @@
     });
   });
 
-  // ---------- Clear chat modal ----------
+  // Modal clear
   let lastFocusedEl = null;
   function openModal() {
     lastFocusedEl = document.activeElement;
@@ -819,7 +716,7 @@
   confirmClearBtn.addEventListener('click', performClear);
   popup.addEventListener('click', (e) => { if (e.target === popup) closeModal(); });
 
-  // ---------- Delete session modal ----------
+  // Delete session modal
   function openDeleteModal(sessionId){
     pendingDeleteId = sessionId;
     delPopup.classList.add('show');
@@ -849,7 +746,7 @@
   delConfirmBtn.addEventListener('click', confirmDeleteSession);
   delPopup.addEventListener('click', (e)=>{ if(e.target===delPopup) closeDeleteModal(); });
 
-  // ---------- Chat send (GET -> POST) + themed addMessage ----------
+  // Chat
   function addMessage(text, who = 'assistant', timeObj = new Date()) {
     const msg = document.createElement('div');
     msg.className = `msg ${who}`;
@@ -893,7 +790,6 @@
 
     ensureCurrentSession();
 
-    // UI: user message
     const nowTime = new Date();
     addMessage(text, 'user', nowTime);
     persistMessage(text, 'user');
@@ -903,8 +799,8 @@
     sending = true;
 
     try{
-      await apiGetUserMessage(text);                 // 1) log
-      const reply = await apiPostAssistantReply(text); // 2) antwoord
+      await apiGetUserMessage(text);
+      const reply = await apiPostAssistantReply(text);
       addMessage(String(reply), 'assistant', new Date());
       persistMessage(String(reply), 'assistant');
 
@@ -921,10 +817,9 @@
   sendBtn.addEventListener('click', sendMessage);
   promptInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
 
-  // New chat button
   newChatBtn.addEventListener('click', startNewSession);
 
-  // ---------- Init ----------
+  // Init
   ensureCurrentSession();
   renderHistory();
 </script>
