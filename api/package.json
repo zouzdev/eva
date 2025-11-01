@@ -1,11 +1,9 @@
 {
   "name": "eva-agent-functions",
   "version": "1.0.0",
-  "description": "SWA managed functions for Eva",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "@azure/functions": "^4.4.0",
-    "@azure/identity": "^4.5.0"
+    "@azure/functions": "^4.4.0"
   }
 }
