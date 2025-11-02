@@ -30,6 +30,7 @@ jobs:
           # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
           app_location: "/" # App source code path
           api_location: "api" # Api source code path - optional
+          skip_api_build: false
           output_location: "" # Built app content directory - optional
           ###### End of Repository/Build Configurations ######
 
@@ -44,6 +45,7 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_OCEAN_056975003 }}
           action: "close"
+
 
 
 
