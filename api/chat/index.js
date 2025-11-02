@@ -1,5 +1,7 @@
 const { AIProjectClient } = require("@azure/ai-projects");
 const { DefaultAzureCredential } = require("@azure/identity");
+const { AzureKeyCredential } = require("@azure/core-auth");
+const project = new AIProjectClient(process.env.PROJECT_URL, new AzureKeyCredential(process.env.PROJECT_API_KEY));
 
 module.exports = async function (context, req) {
   try {
@@ -55,3 +57,4 @@ module.exports = async function (context, req) {
     };
   }
 };
+
