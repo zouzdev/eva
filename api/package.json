@@ -4,8 +4,9 @@
   "type": "commonjs",
   "dependencies": {
     "@azure/functions": "^4.0.0",
-    "@azure/ai-projects": "^1.1.0",
+    "@azure/ai-projects": "^1.0.1",
     "@azure/identity": "^4.5.0",
     "@azure/core-auth": "^1.5.0"
   }
 }
+
