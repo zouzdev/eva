@@ -1,5 +1,6 @@
 const { AIProjectClient } = require("@azure/ai-projects");
-const { AzureKeyCredential } = require("@azure/core-auth");
+// const { AzureKeyCredential } = require("@azure/core-auth");
+const { DefaultAzureCredential } = require("@azure/identity");
 
 const PROJECT_URL   = process.env.PROJECT_URL;     // bv. https://...services.ai.azure.com/api/projects/...
 const AGENT_ID      = process.env.AGENT_ID;        // asst_...
@@ -16,7 +17,8 @@ module.exports = async function (context, req) {
     if (!PROJECT_API_KEY) throw new Error("Missing env PROJECT_API_KEY");
 
     // Azure AI Foundry gebruikt deze headernaam:
-    const client = new AIProjectClient(PROJECT_URL, new AzureKeyCredential(PROJECT_API_KEY));
+    // const client = new AIProjectClient(PROJECT_URL, new AzureKeyCredential(PROJECT_API_KEY));
+    const client = new AIProjectClient(PROJECT_URL, new DefaultAzureCredential());
 
     // check agent
     await client.agents.getAgent(AGENT_ID);
@@ -53,4 +55,5 @@ function cors(){
     "Access-Control-Allow-Headers": "content-type",
   };
 }
+
 
