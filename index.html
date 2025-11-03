@@ -354,8 +354,12 @@
   const PROJECT_URL = "https://conta-mgl1a7ru-eastus2.services.ai.azure.com/api/projects/conta-mgl1a7ru-eastus2_project";
   const AGENT_ID    = "asst_x0lvuBNFbIqxiKR4lOZW1o7M";
 
-  // Frontend spreekt je server aan:
-  const API_CHAT = '/api/chat';
+  // ⬇️ BELANGRIJK: stuur naar je Function App, niet naar SWA
+  // in productie (SWA domein) -> Function App url
+  // lokaal -> je lokale Functions host
+  const API_CHAT = (location.hostname.includes("azurestaticapps.net"))
+    ? "https://atlas-eva-funcapp.azurewebsites.net/api/chat"
+    : "http://localhost:7071/api/chat";
 
   // ---------- Elements ----------
   const cards = document.querySelectorAll('.card');
@@ -414,14 +418,13 @@
   }
 
   async function callAgent(userMessage, existingThreadId) {
-    // Log zichtbaar in browser zodat je het letterlijk ziet
+    console.log("[Eva] API_CHAT →", API_CHAT);
     console.log("[Eva] PROJECT_URL →", PROJECT_URL);
     console.log("[Eva] AGENT_ID    →", AGENT_ID);
 
     const res = await fetch(API_CHAT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // stuur expliciet mee
       body: JSON.stringify({
         message: userMessage,
         threadId: existingThreadId || null,
@@ -432,9 +435,9 @@
     const raw = await res.text().catch(()=> '');
     let data = raw; try { data = JSON.parse(raw); } catch {}
     if(!res.ok){
-      throw new Error(`POST /api/chat ${res.status} ${res.statusText}: ${toDisplayString(data)}`);
+      throw new Error(`POST ${API_CHAT} ${res.status} ${res.statusText}: ${toDisplayString(data)}`);
     }
-    return data; // { replyText, threadId, messages? }
+    return data;
   }
 
   function hideCards(){ cardsSection?.classList.add('hidden'); }
@@ -831,3 +834,4 @@
 </script>
 </body>
 </html>
+
