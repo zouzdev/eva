@@ -1,4 +1,4 @@
-name: Build and deploy Function App (Node.js)
+name: Deploy Function App
 
 on:
   push:
@@ -6,43 +6,38 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js (voor npm install in ./api)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Installeer deps in ./api (waar je Functions code staat)
       - name: Install dependencies (api)
         working-directory: api
         run: |
           if [ -f package-lock.json ]; then
-            echo "Using npm ci"
             npm ci --no-audit --no-fund
-          else
-            echo "No lockfile, using npm install"
+          elif [ -f package.json ]; then
             npm install --no-audit --no-fund
-          fi
-
-      # Alleen uitvoeren als je een build script hebt
-      - name: Build (if present)
-        working-directory: api
-        run: |
-          if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
-            npm run build
           else
-            echo "No build script defined; skipping."
+            echo "No package.json in api/, skipping npm install."
           fi
 
-      - name: Deploy to Azure Functions
+      - name: Deploy to Azure Functions (zip deploy)
         uses: azure/functions-action@v1
         with:
-          app-name: atlas-eva-funcapp                 # <— jouw Function App naam
-          package: ./api                              # de map met function.json / index.js
+          app-name: atlas-eva-funcapp                 # jouw Function App naam
+          package: ./api                              # map met host.json + chat/function.json
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+
+      - name: Smoke test
+        run: |
+          curl -i -X POST "https://atlas-eva-funcapp.azurewebsites.net/api/chat" \
+            -H "Content-Type: application/json" \
+            -d '{"message":"ping"}' || true
