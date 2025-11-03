@@ -16,9 +16,7 @@ module.exports = async function (context, req) {
     if (!PROJECT_API_KEY) throw new Error("Missing env PROJECT_API_KEY");
 
     // Azure AI Foundry gebruikt deze headernaam:
-    const client = new AIProjectClient(PROJECT_URL, new AzureKeyCredential(PROJECT_API_KEY), {
-      apiKeyHeaderName: "x-ms-api-key",
-    });
+    const client = new AIProjectClient(PROJECT_URL, new AzureKeyCredential(PROJECT_API_KEY));
 
     // check agent
     await client.agents.getAgent(AGENT_ID);
@@ -55,3 +53,4 @@ function cors(){
     "Access-Control-Allow-Headers": "content-type",
   };
 }
+
