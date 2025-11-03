@@ -1,9 +1,10 @@
 {
   "name": "eva-agent-functions",
   "version": "1.0.0",
-  "main": "index.js",
-  "license": "MIT",
+  "type": "commonjs",
   "dependencies": {
-    "@azure/functions": "^4.4.0"
+    "@azure/ai-projects": "^1.0.1",
+    "@azure/identity": "^4.5.0",
+    "@azure/core-auth": "^1.5.0"
   }
 }
