@@ -1,13 +1,8 @@
 const { AIProjectClient } = require("@azure/ai-projects");
 const { DefaultAzureCredential } = require("@azure/identity");
-const { AzureKeyCredential } = require("@azure/core-auth");
 
 const PROJECT_URL = process.env.PROJECT_URL;
-const PROJECT_API_KEY = process.env.PROJECT_API_KEY; // Project API key (Foundry)
-const AGENT_ID = process.env.AGENT_ID;
-
-// vaste headernaam voor Azure AI Foundry
-const API_KEY_HEADER_NAME = "x-ms-api-key";
+const AGENT_ID    = process.env.AGENT_ID;
 
 module.exports = async function (context, req) {
   // CORS preflight
@@ -20,41 +15,42 @@ module.exports = async function (context, req) {
     if (!PROJECT_URL) throw new Error("Missing env PROJECT_URL");
     if (!AGENT_ID)    throw new Error("Missing env AGENT_ID");
 
-    // Gebruik API key als die er is; anders Managed Identity
-    const credential = PROJECT_API_KEY
-      ? new AzureKeyCredential(PROJECT_API_KEY)
-      : new DefaultAzureCredential();
+    // ***** Belangrijk: alleen Managed Identity *****
+    const credential = new DefaultAzureCredential();
 
-    // >>> Belangrijk: headernaam hardcoderen <<<
-    const client = new AIProjectClient(PROJECT_URL, credential, {
-      apiKeyHeaderName: API_KEY_HEADER_NAME,
+    // Log even welke vars er binnenkomen (zonder geheimen)
+    context.log("AI chat starting", {
+      hasProjectUrl: Boolean(PROJECT_URL),
+      hasAgentId: Boolean(AGENT_ID),
+      usingMI: true
     });
 
-    // check agent
+    const client = new AIProjectClient(PROJECT_URL, credential);
+
+    // Validatie dat agent bestaat
     await client.agents.getAgent(AGENT_ID);
 
-    // thread bepalen
+    // Thread bepalen (hergebruiken als meegegeven)
     const existingThreadId = req.body?.threadId || null;
     const thread = existingThreadId
       ? { id: existingThreadId }
       : await client.agents.threads.create();
 
-    // user message
     const userText = req.body?.message ?? "Hello from SWA";
     await client.agents.messages.create(thread.id, "user", userText);
 
-    // run + poll
+    // Run + poll
     let run = await client.agents.runs.create(thread.id, AGENT_ID);
     while (run.status === "queued" || run.status === "in_progress") {
-      await new Promise((r) => setTimeout(r, 1000));
+      await delay(1000);
       run = await client.agents.runs.get(thread.id, run.id);
     }
 
-    // laatste assistant tekst
+    // Laatste assistant-tekst
     let replyText = "No assistant text found.";
     for await (const m of client.agents.messages.list(thread.id, { order: "desc" })) {
       if (m.role === "assistant") {
-        const t = m.content?.find((c) => c.type === "text")?.text?.value;
+        const t = m.content?.find(c => c.type === "text")?.text?.value;
         if (t) { replyText = t; break; }
       }
     }
@@ -62,19 +58,20 @@ module.exports = async function (context, req) {
     context.res = {
       status: 200,
       headers: cors(),
-      body: { replyText, threadId: thread.id, runStatus: run.status },
+      body: { replyText, threadId: thread.id, runStatus: run.status }
     };
   } catch (e) {
     context.log.error("chat error:", e);
     context.res = {
       status: 500,
       headers: cors(),
-      body: { error: e?.message ?? String(e) },
+      body: { error: e?.message ?? String(e) }
     };
   }
 };
 
-function cors() {
+function delay(ms){ return new Promise(r => setTimeout(r, ms)); }
+function cors(){
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "POST,OPTIONS",
