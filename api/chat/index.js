@@ -2,6 +2,13 @@ const { AIProjectClient } = require("@azure/ai-projects");
 const { DefaultAzureCredential } = require("@azure/identity");
 const { AzureKeyCredential } = require("@azure/core-auth");
 
+const endpoint = process.env.PROJECT_URL;
+const apiKey   = process.env.PROJECT_API_KEY;
+
+const project = apiKey
+  ? new AIProjectClient(endpoint, new AzureKeyCredential(apiKey))   // <-- gebruikt API key
+  : new AIProjectClient(endpoint, new DefaultAzureCredential());    // fallback MI/Env
+
 module.exports = async function (context, req) {
   // CORS preflight
   if (req.method === "OPTIONS") {
@@ -72,3 +79,4 @@ function cors(){
     "Access-Control-Allow-Headers": "content-type"
   };
 }
+
