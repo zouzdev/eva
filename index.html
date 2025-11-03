@@ -357,9 +357,7 @@
   // ⬇️ BELANGRIJK: stuur naar je Function App, niet naar SWA
   // in productie (SWA domein) -> Function App url
   // lokaal -> je lokale Functions host
-  const API_CHAT = (location.hostname.includes("azurestaticapps.net"))
-    ? "https://atlas-eva-funcapp.azurewebsites.net/api/chat"
-    : "http://localhost:7071/api/chat";
+  const API_CHAT = "https://atlas-eva-funcapp.azurewebsites.net/api/chat";
 
   // ---------- Elements ----------
   const cards = document.querySelectorAll('.card');
@@ -834,4 +832,5 @@
 </script>
 </body>
 </html>
+
 
