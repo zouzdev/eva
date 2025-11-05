@@ -7,10 +7,8 @@
     "@azure/ai-projects": "^1.0.1",
     "@azure/identity": "^4.5.0",
     "@azure/core-auth": "^1.5.0"
-  },
-  "scripts": {
-  "build": "echo 'No build needed'"
+  }
 }
-}
+
 
 
