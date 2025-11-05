@@ -248,36 +248,48 @@
     transform-origin: top center;
   }
 
-  /* Typing / thinking indicator */
+  /* Thinking indicator - Sound Wave Animation */
   .typing-indicator {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    margin: 10px 0;
-    padding: 10px 14px;
+    gap: 12px;
+    padding: 14px 18px;
     background: var(--assistant-bg);
     border: 1px solid var(--assistant-border);
     box-shadow: var(--assistant-shadow);
     border-radius: 18px;
-    width: fit-content;
   }
 
-  .typing-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--brand);
-    border-radius: 50%;
-    animation: typingBlink 1.4s infinite ease-in-out;
-    opacity: 0.6;
+  .wave-bars {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 20px;
   }
 
-  .typing-dot:nth-child(2) { animation-delay: .2s; }
-  .typing-dot:nth-child(3) { animation-delay: .4s; }
+  .wave-bar {
+    width: 3px;
+    background: linear-gradient(180deg, #826FE8, #7C3AED);
+    border-radius: 2px;
+    animation: wave 1.2s infinite ease-in-out;
+  }
 
-  @keyframes typingBlink {
-    0% { transform: translateY(0); opacity: .4; }
-    35% { transform: translateY(-4px); opacity: .9; }
-    70% { transform: translateY(0); opacity: .4; }
+  .wave-bar:nth-child(1) { animation-delay: 0s; height: 8px; }
+  .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 12px; }
+  .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 16px; }
+  .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 12px; }
+  .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 8px; }
+
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
+    50% { transform: scaleY(1.2); opacity: 1; }
+  }
+
+  .thinking-text {
+    font-size: 14px;
+    color: var(--brand);
+    font-weight: 600;
+    letter-spacing: 0.3px;
   }
 </style>
 </head>
@@ -454,9 +466,14 @@
     el.innerHTML = `
       <div class="bubble-wrap">
         <div class="typing-indicator">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
+          <div class="wave-bars">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+          <span class="thinking-text">Eva is thinking</span>
         </div>
       </div>`;
     chatlog.appendChild(el);
@@ -795,6 +812,7 @@
     saveSessions(after);
     if(getCurrentId()===pendingDeleteId){ startNewSession(); }
     renderHistory();
+    closeDeleteModal();
   }
   delCancelBtn.addEventListener('click', closeDeleteModal);
   delConfirmBtn.addEventListener('click', confirmDeleteSession);
@@ -850,9 +868,11 @@
     hideCards(); hideHero();
 
     sending = true;
+    showTyping();
 
     try{
       const result = await callAgent(text, current.threadId);
+      hideTyping();
       const reply = String(result.replyText || 'OK');
       addMessage(reply, 'assistant', new Date());
       persistMessage(reply, 'assistant');
@@ -866,6 +886,7 @@
         renderHistory();
       }
     }catch(e){
+      hideTyping();
       const errMsg = toDisplayString(e?.message || e || 'Er ging iets mis met de verbinding.');
       const shown = '⚠️ Serverfout: ' + errMsg;
       addMessage(shown, 'assistant', new Date());
@@ -882,28 +903,6 @@
 
   ensureCurrentSession();
   renderHistory();
-
-  // --- Typing Indicator ---
-  function showTyping() {
-    const indicator = document.createElement("div");
-    indicator.className = "typing-indicator";
-    indicator.id = "typing-indicator";
-    indicator.innerHTML = `
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-    `;
-    chatlog.appendChild(indicator);
-    chatlog.scrollTop = chatlog.scrollHeight;
-  }
-
-  function hideTyping() {
-    const el = document.getElementById("typing-indicator");
-    if (el) el.remove();
-  }
-
 </script>
 </body>
 </html>
-
-
