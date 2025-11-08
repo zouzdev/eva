@@ -605,10 +605,33 @@
   function parseMessageWithCitations(text) {
     // Check if message has proper citation format first
     const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
+    const hasSources = /\n\s*Sources:\s*\n/i.test(text);
     
     if (hasBronnen) {
-      // Format: [1] text [2] ... \n\nBronnen:\n[1] Title | Location | Date
+      // Format: [1] text [2] ... \n\nBronnen:\n[1] Title 
       const parts = text.split(/\n\s*Bronnen:\s*\n/i);
+      const mainText = parts[0].trim();
+      const sourcesText = parts[1] || '';
+      
+      // Parse sources - format: [1] Title | Location | Date
+      const sources = [];
+      const sourceLines = sourcesText.split('\n').filter(line => line.trim());
+      
+      sourceLines.forEach(line => {
+        const match = line.match(/\[(\d+)\]\s*(.+?)\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/);
+        if (match) {
+          sources.push({
+            number: match[1],
+            title: match[2].trim(),
+            location: match[3].trim(),
+            date: match[4]?.trim() || ''
+          });
+        }
+      });
+
+      if (hasSources) {
+      // Format: [1] text [2] ... \n\nSources:\n[1] Title 
+      const parts = text.split(/\n\s*Sources:\s*\n/i);
       const mainText = parts[0].trim();
       const sourcesText = parts[1] || '';
       
