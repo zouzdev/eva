@@ -560,32 +560,39 @@
   }
 
   // ---------- Citations Parsing ----------
-function parseMessageWithCitations(text) {
-  // Zoek naar "Bronnen:" of "Sources:"
-  const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
-  const m = text.match(headingRe);
+  function parseMessageWithCitations(text) {
+  // Match een kop op een NIEUWE REGEL:
+  // optioneel "###", dan Bronnen|Sources, optionele ":", gevolgd door newline of einde
+  const headingRe = /(^|\r?\n)\s*(?:###\s*)?(Bronnen|Sources)\s*:?\s*(?:\r?\n|$)/im;
+  const m = headingRe.exec(text);
 
   let mainText = text;
   let sourcesText = '';
-  let headerLabel = 'Bronnen'; // default NL
+  let headerLabel = 'Bronnen';
   let sources = [];
 
   if (m) {
-    const idx = text.search(headingRe);
+    const idx = m.index;                    // start van de kop
     mainText = text.slice(0, idx).trimEnd();
     sourcesText = text.slice(idx + m[0].length);
-    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1); // behoud taal
+    headerLabel = m[2].charAt(0).toUpperCase() + m[2].slice(1);
   }
 
-  // Als we bronnen hebben, parse ze
+  // Parse bronregels (1 regel per bron). Werkt met -, •, [n], of niets.
   if (sourcesText) {
-    const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
+    const lines = sourcesText
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
     sources = lines.map((line, i) => {
-      const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
-      const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
+      const url = (line.match(/https?:\/\/\S+/i)?.[0]) || '';
+      const cleaned = line
+        .replace(/^\s*(?:[-*•]|\[\d+\])\s*/, ''); // strip bullet of [n]
+      const parts = cleaned.split('|').map(s => s.trim());
       return {
         number: String(i + 1),
-        title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
+        title: parts[0] || cleaned,
         location: parts[1] || '',
         date: parts[2] || '',
         url
@@ -593,7 +600,7 @@ function parseMessageWithCitations(text) {
     });
   }
 
-  // Azure markers → [n] verwijzingen (altijd inline maken als er bronnen zijn)
+  // Azure markers → inline [n] als we bronnen hebben
   if (sources.length > 0) {
     let markerIdx = 0;
     mainText = mainText.replace(/【[^】]*source】/g, () => {
@@ -609,27 +616,31 @@ function parseMessageWithCitations(text) {
     mainText = mainText.replace(/【[^】]*source】/g, '');
   }
 
-  // Markdown → HTML en [n] klikbaar
-  let html = mainText;
-  html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
-             .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
-             .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
+  // Markdown → placeholders (incl. ### → H1 in bubbels)
+  let html = mainText
+    .replace(/^\s*###\s*(.+)$/gm, '|||H1|||$1|||/H1|||')
+    .replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
+    .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
 
   html = escapeHtml(html)
-           .replace(/\|\|\|B\|\|\|/g, '<strong>')
-           .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
-           .replace(/\|\|\|I\|\|\|/g, '<em>')
-           .replace(/\|\|\|\/I\|\|\|/g, '</em>')
-           .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
-           .replace(/^- (.+)$/gm, '• $1')
-           .replace(/\n\n+/g, '</p><p>')
-           .replace(/\n/g, '<br>');
+    .replace(/\|\|\|H1\|\|\|/g, '<h1 class="msg-h1"><strong>')
+    .replace(/\|\|\|\/H1\|\|\|/g, '</strong></h1>')
+    .replace(/\|\|\|B\|\|\|/g, '<strong>')
+    .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
+    .replace(/\|\|\|I\|\|\|/g, '<em>')
+    .replace(/\|\|\|\/I\|\|\|/g, '</em>')
+    .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
+    .replace(/^- (.+)$/gm, '• $1')
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>');
 
   html = '<p>' + html + '</p>';
   html = html.replace(/<p>\s*<\/p>/g, '');
 
   return { html, sources, headerLabel };
 }
+
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
