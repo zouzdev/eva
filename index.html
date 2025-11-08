@@ -95,17 +95,469 @@
   }
   .sb-overlay.show{ display:block; }
 
-
-
-
-
-
-
-
-
   .page{ min-height: 100dvh; transition: margin-right .18s ease; }
   body.sb-open .page{ margin-right: var(--sb-w); }
-@@ -561,48 +569,49 @@
+
+  .sb-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 6px 6px 10px; }
+  .sb-title{ font-weight: 800; letter-spacing:.2px; }
+  .btn-small{ padding:8px 12px; border-radius:12px; border:1px solid var(--sb-border); background:#fff; font-weight:600; cursor:pointer; }
+  .btn-small:hover{ background:#f3f4f8; }
+
+  .sb-section{ margin-top: 12px; }
+  .sb-section h4{ margin: 12px 8px 8px; font-size: 12px; text-transform: uppercase; letter-spacing:.12em; color:#777e8c; }
+  .history-list{ display:flex; flex-direction:column; gap:6px; padding: 0 4px; }
+
+  .history-item{
+    display:flex; align-items:center; gap:10px;
+    background: var(--sb-item);
+    border:1px solid var(--sb-border);
+    border-radius: 12px; padding: 10px 10px;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, transform .12s ease;
+  }
+  .history-item:hover{ background: var(--sb-item-hover); }
+  .history-item.active{ background: var(--sb-active); border-color: rgba(124,58,237,.28); }
+  .history-item .hi-icon{ width:26px; height:26px; display:grid; place-items:center; border-radius: 8px; background:#eef0fb; }
+  .history-item .hi-meta{ min-width:0; }
+  .history-item .hi-title{ font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-item .hi-time{ font-size:12px; color:#7a8190; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .history-item .hi-actions{ margin-left:auto; display:flex; gap:6px; opacity:.0; transition:opacity .15s ease; }
+  .history-item:hover .hi-actions{ opacity:1; }
+  .icon-btn{ width:28px; height:28px; border-radius:8px; border:1px solid var(--sb-border); background:#fff; display:grid; place-items:center; cursor:pointer; }
+  .icon-btn:hover{ background:#f3f4f8; }
+  .icon-btn svg{ width:14px; height:14px; }
+
+  /* Main content */
+  .wrap{
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 20px 24px calc(30px + env(safe-area-inset-bottom));
+  }
+
+  .sb-toggle{
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    z-index: 1100;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:8px 10px;
+    background:#fff;
+    cursor:pointer;
+    gap:8px;
+    align-items:center;
+    display:inline-flex;
+    box-shadow: 0 2px 10px rgba(16, 18, 27, .08);
+  }
+  .sb-toggle svg{ width:16px; height:16px; }
+  body.sb-open .sb-toggle{ right: calc(24px + var(--sb-w)); }
+
+  .hero{ margin: 56px auto 28px; text-align: center; max-width: 860px; padding:0 20px 20px 0; }
+  .hero h1{ margin:0 0 10px; font-size: clamp(30px, 5.2vw, 44px); font-weight:800; letter-spacing:.2px; color:#826FE8; position:relative; display:inline-block; overflow:hidden; }
+  .hero h1::after{ content:""; position:absolute; top:0; left:-75%; width:50%; height:100%; background:linear-gradient(120deg,transparent,rgba(255,255,255,.6),transparent); transform:skewX(-20deg); animation:shine 2.8s infinite ease-in-out; }
+  @keyframes shine { 0%{left:-75%} 50%{left:125%} 100%{left:125%} }
+  .hero p{ margin:0 auto; max-width:720px; color:var(--muted); font-size:16px; line-height:1.7; }
+
+  .cards{ margin: 32px auto 24px; display:grid; grid-template-columns: repeat(4, 1fr); gap:18px; max-width:1060px; }
+  @media (max-width:1060px){ .cards{ grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width:640px){ .cards{ grid-template-columns: 1fr; } }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:18px; position:relative; min-height:118px; transition:all .25s ease; cursor:pointer; }
+  .card:hover{ transform:translateY(-6px); box-shadow:0 10px 28px rgba(124,58,237,.18); border-color:rgba(124,58,237,.25); }
+  .card .arrow{ position:absolute; top:14px; right:14px; width:28px; height:28px; border-radius:999px; border:1px solid var(--line); display:grid; place-items:center; background:#fff; transition:all .25s ease; }
+  .card:hover .arrow{ background:var(--brand); border-color:var(--brand); transform:rotate(-45deg); }
+  .arrow svg{ width:14px; height:14px; }
+  .card h3{ margin:8px 0 6px; font-size:18px; font-weight:var(--w-bold); letter-spacing:.2px; }
+  .card p{ margin:0; color:#7a8190; font-size:13.5px; line-height:1.5; max-width:92%; }
+
+  .chatlog{ max-width:980px; margin:8px auto 0; padding:0 8px; }
+  .msg{ display:flex; gap:10px; align-items:flex-end; margin: 12px 0; }
+  .msg.assistant{ justify-content:flex-start; }
+  .msg.user{ justify-content:flex-end; }
+  .msg .bubble-wrap{ max-width: 72%; display: inline-flex; flex-direction: column; gap: 8px; }
+  .bubble{ padding: 14px 16px; border-radius: 18px; line-height: 1.6; font-weight: var(--w-chat); font-size: 15px; position: relative; }
+  .msg.user .bubble{ background: linear-gradient(180deg, var(--user-grad-a), var(--user-grad-b)); color: #fff; border: none; box-shadow: var(--user-shadow); }
+  .msg.assistant .bubble{ background: var(--assistant-bg); border: 1px solid var(--assistant-border); color: #0f1117; box-shadow: var(--assistant-shadow); }
+  
+  /* Typewriter cursor */
+  .typing-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--brand);
+    margin-left: 2px;
+    animation: blink 1s infinite;
+    vertical-align: text-bottom;
+  }
+  
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  .meta{ font-size: 12px; color: var(--time); display:flex; align-items:center; gap:8px; padding: 0 4px 0 6px; }
+  .tick{ display:inline-flex; align-items:center; gap:4px; color:#e8e8ff; }
+  .tick svg{ width:14px; height:14px; display:block; }
+
+  /* Citation Numbers in Text */
+  /* zelfde highlight voor <a.citation-link> als voor .citation-item */
+  .citation-link.highlight{
+    background: var(--citation-hover);
+    border-color: var(--brand);
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  }
+
+  .citation-ref {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--brand);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin: 0 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+  }
+  .citation-ref:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  }
+
+  /* Citations Container */
+  .citations {
+    background: var(--citation-bg);
+    border: 1px solid rgba(124, 58, 237, 0.15);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .citations.single { padding: 10px 12px; } /* compacter voor 1 bron */
+  .citations.single .citations-header{ display:none; }
+
+  .citations-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6a6f7a;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .citations-header svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+  }
+
+  .citation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .citation-item,
+  .citation-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .citation-item:hover,
+  .citation-link:hover {
+    background: var(--citation-hover);
+    border-color: var(--brand);
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  }
+  .citation-item.highlight { background: var(--citation-hover); border-color: var(--brand); }
+
+  .citation-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background: var(--brand);
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .citation-content { flex: 1; min-width: 0; }
+  .citation-title { font-size: 14px; font-weight: 600; color: #0f1117; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .citation-source { font-size: 12px; color: #6a6f7a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .citation-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+  }
+  .citation-item:hover .citation-icon,
+  .citation-link:hover .citation-icon { opacity: 0.8; }
+
+  .composer{
+    position: fixed;
+    left: 50%;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(980px, 96vw);
+    z-index: 1000;
+    transition: filter .18s ease, transform .18s ease, width .18s ease;
+  }
+  body.sb-open .composer{
+    transform: translateX(calc(-50% - (var(--sb-w) / 2)));
+    width: min(980px, calc(96vw - var(--sb-w)));
+    filter: blur(0.2px);
+  }
+  .composer .bar{
+    width:100%;
+    display:grid;
+    grid-template-columns:48px 1fr 56px;
+    align-items:center;
+    gap:12px;
+    background:#f4f6fb;
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:999px;
+    padding:10px 10px 10px 12px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 50px;
+    transform: scale(var(--ui-scale));
+    transform-origin: center;
+    transition: opacity .2s ease, filter .2s ease, transform .2s ease;
+  }
+  .bar.disabled{ opacity:.6; filter:grayscale(.1); pointer-events:none; }
+
+  .circle{ width:36px; height:36px; border-radius:999px; background:#e9ecf4; display:grid; place-items:center; transition: all .25s ease; cursor:pointer; border:1px solid rgba(0,0,0,.06); }
+  .circle:hover{ background: color-mix(in oklab, var(--brand) 12%, #e9ecf4); box-shadow:0 0 12px rgba(124,58,237,.15); transform: scale(1.06); }
+  .circle img, .circle svg{ width:16px; height:16px; }
+
+  .input{ display:flex; align-items:center; gap:10px; border:1px solid rgba(0,0,0,.06); border-radius:999px; padding:12px 16px; background:#fff; }
+  .input input{
+    border:0; outline:0; background:transparent; width:100%;
+    font-size:15px; color:var(--ink);
+    font-family: var(--font);
+    font-weight: var(--w-chat);
+  }
+  .input input:disabled{ background:#fff; color:#a6adbd; }
+  .input:focus-within{ box-shadow:0 0 0 3px rgba(124,58,237,.1); }
+
+  .send{ width:44px; height:44px; border-radius:999px; display:grid; place-items:center; background:var(--send-purple); border:none; cursor:pointer; color:#fff; transition: transform .25s ease, box-shadow .3s ease; }
+  .send svg{ width:18px; height:18px; }
+  .send:hover{ transform:scale(1.08); box-shadow:0 0 14px rgba(124,58,237,.25); }
+
+  .popup { position: fixed; inset: 0; background: rgba(6, 8, 20, 0.45); display: none; align-items: center; justify-content: center; z-index: 1500; backdrop-filter: blur(6px); }
+  .popup.show { display:flex; animation: fadeIn .14s ease-out; }
+  @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+  .popup-content { width:min(440px,92vw); background:linear-gradient(180deg,#ffffff,#fbfbff); border:1px solid rgba(124,58,237,.18); border-radius:16px; box-shadow:0 18px 60px rgba(20,16,40,.18); padding:22px 20px 18px; transform: translateY(6px); animation: rise .18s ease-out forwards; }
+  @keyframes rise { to { transform: translateY(0) } }
+  .popup-title{ margin:0; font-size:16.5px; font-weight:700; }
+  .popup-desc{ margin:6px 0 0; color:#5f6472; font-size:14px; line-height:1.6; }
+  .popup-buttons{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+  .btn{ padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; border:1px solid transparent; transition: transform .06s ease, box-shadow .2s ease, background .2s ease; }
+  .btn:active{ transform: translateY(1px); }
+  .btn-secondary{ background:#f3f4f8; color:#111; border-color: rgba(0,0,0,.06); }
+  .btn-secondary:hover{ background:#e8eaf1; }
+  .btn-danger{ background: var(--send-purple); color:#fff; border-color: var(--send-purple); box-shadow: 0 6px 18px rgba(130,111,232,.25); }
+  .btn-danger:hover{ background: color-mix(in oklab, var(--send-purple) 88%, #000); border-color: color-mix(in oklab, var(--send-purple) 88%, #000); }
+
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+  .content.scaled{
+    transform: scale(var(--ui-scale));
+    transform-origin: top center;
+  }
+
+  /* Thinking indicator - Sound Wave Animation */
+  .typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--assistant-bg);
+    border: 1px solid var(--assistant-border);
+    box-shadow: var(--assistant-shadow);
+    border-radius: 18px;
+  }
+  .wave-bars { display: flex; align-items: center; gap: 3px; height: 20px; }
+  .wave-bar { width: 3px; background: linear-gradient(180deg, #826FE8, #7C3AED); border-radius: 2px; animation: wave 1.2s infinite ease-in-out; }
+  .wave-bar:nth-child(1) { animation-delay: 0s; height: 8px; }
+  .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 12px; }
+  .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 16px; }
+  .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 12px; }
+  .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 8px; }
+  @keyframes wave { 0%, 100% { transform: scaleY(0.5); opacity: 0.6; } 50% { transform: scaleY(1.2); opacity: 1; } }
+  .thinking-text { font-size: 14px; color: var(--brand); font-weight: 600; letter-spacing: 0.3px; }
+</style>
+</head>
+
+<body>
+  <!-- Sidebar -->
+  <aside class="history-sidebar" id="sidebar" aria-label="Geschiedenis">
+    <div class="sb-header">
+      <div class="sb-title">Geschiedenis</div>
+      <button id="newChatBtn" class="btn-small" title="Nieuw gesprek">+ Nieuw</button>
+    </div>
+
+    <div class="sb-section">
+      <h4>Vandaag</h4>
+      <div class="history-list" id="list-today"></div>
+    </div>
+
+    <div class="sb-section">
+      <h4>Gisteren</h4>
+      <div class="history-list" id="list-yesterday"></div>
+    </div>
+
+    <div class="sb-section">
+      <h4>In de afgelopen 7 dagen</h4>
+      <div class="history-list" id="list-week"></div>
+    </div>
+  </aside>
+  <div class="sb-overlay" id="sbOverlay"></div>
+
+  <!-- Menu-knop -->
+  <button class="sb-toggle" id="sbToggle" aria-controls="sidebar" aria-expanded="false">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path d="M4 7h16M4 12h16M4 17h16" stroke="#111" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    Menu
+  </button>
+
+  <div class="page">
+    <div class="wrap">
+      <div class="content scaled">
+        <section class="hero" id="hero">
+          <h1>How can I help you today?</h1>
+          <p>Quick answers to HR, IT, and operations questions. Click a card or ask your question below.</p>
+        </section>
+
+        <section class="cards" id="cards">
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Request Time Off</h3><p>Process, approvals, and lead times.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Payslip & Salary</h3><p>Portal access, payday, and common issues.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Expenses</h3><p>Step-by-step submission and processing times.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>IT: Password Reset</h3><p>Self-service reset or via the service desk.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Sick Leave</h3><p>Who to notify, by what time, and next steps.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Travel Costs</h3><p>Public transport, mileage, and claiming.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Policies & GDPR</h3><p>Handbook, remote work policy, and security.</p></article>
+          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Parental Leave</h3><p>Notice periods and required documents.</p></article>
+        </section>
+
+        <div class="chatlog" id="chatlog" aria-live="polite"></div>
+      </div>
+
+      <div class="composer" id="composer" aria-hidden="false">
+        <div class="bar" id="bar">
+          <button class="circle clear-chat" id="clearChatBtn" title="Clear chat (Ctrl+Backspace)" aria-haspopup="dialog" aria-controls="popup" aria-expanded="false">
+            <img src="SVG-Delete-Paars.svg" alt="" aria-hidden="true" />
+            <span class="sr-only">Clear chat</span>
+          </button>
+
+          <label class="input" for="prompt">
+            <input id="prompt" type="text" placeholder="Ask your question..." aria-label="Enter question" />
+          </label>
+
+          <button class="send" id="sendBtn" title="Send (Enter)">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 5l7 7M12 5l-7 7M12 5v14" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="sr-only">Send</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="popup" class="popup" role="dialog" aria-modal="true" aria-labelledby="popupTitle" aria-describedby="popupDesc">
+    <div class="popup-content" tabindex="-1">
+      <h2 class="popup-title" id="popupTitle">Clear chat?</h2>
+      <p class="popup-desc" id="popupDesc">This will delete all messages in this session. This action cannot be undone.</p>
+      <div class="popup-buttons">
+        <button id="cancelBtn" class="btn btn-secondary">Cancel</button>
+        <button id="clearBtn" class="btn btn-danger">Yes, clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="delPopup" class="popup" role="dialog" aria-modal="true" aria-labelledby="delPopupTitle" aria-describedby="delPopupDesc">
+    <div class="popup-content" tabindex="-1">
+      <h2 class="popup-title" id="delPopupTitle">Gesprek verwijderen?</h2>
+      <p class="popup-desc" id="delPopupDesc">Dit verwijdert het volledige gesprek uit de geschiedenis. Deze actie kan niet ongedaan worden gemaakt.</p>
+      <div class="popup-buttons">
+        <button id="delCancelBtn" class="btn btn-secondary">Annuleren</button>
+        <button id="delConfirmBtn" class="btn btn-danger">Ja, verwijderen</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---------- CONFIG ----------
+  const PROJECT_URL = "https://conta-mgl1a7ru-eastus2.services.ai.azure.com/api/projects/conta-mgl1a7ru-eastus2_project";
+  const AGENT_ID    = "asst_x0lvuBNFbIqxiKR4lOZW1o7M";
+  const API_CHAT = "https://atlas-eva-funcapp.azurewebsites.net/api/chat";
+
+  // ---------- Elements ----------
+  const cards = document.querySelectorAll('.card');
+  const cardsSection = document.getElementById('cards');
+  const hero = document.getElementById('hero');
+  const promptInput = document.getElementById('prompt');
+  const chatlog = document.getElementById('chatlog');
+  const composer = document.getElementById('composer');
+  const bar = document.getElementById('bar');
+  const popup = document.getElementById('popup');
+  const popupContent = popup.querySelector('.popup-content');
+  const clearChatBtn = document.getElementById('clearChatBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const confirmClearBtn = document.getElementById('clearBtn');
+  const delPopup = document.getElementById('delPopup');
+  const delPopupContent = delPopup.querySelector('.popup-content');
+  const delCancelBtn = document.getElementById('delCancelBtn');
+  const delConfirmBtn = document.getElementById('delConfirmBtn');
+  let pendingDeleteId = null;
+  const sendBtn = document.getElementById('sendBtn');
+
+  // Sidebar
+  const listToday = document.getElementById('list-today');
+  const listYesterday = document.getElementById('list-yesterday');
+  const listWeek = document.getElementById('list-week');
+  const newChatBtn = document.getElementById('newChatBtn');
+  const sbToggle = document.getElementById('sbToggle');
+  const sidebar = document.getElementById('sidebar');
+  const sbOverlay = document.getElementById('sbOverlay');
+
+  // Storage
+  const LS_SESSIONS = 'eva-history';
+  const LS_CURRENT = 'eva-current';
+
+  const now = () => new Date().toISOString();
+  const uid = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
+  const loadSessions = () => {
+    try{ return JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]'); }catch(_){ return []; }
+  };
+  const saveSessions = (arr) => localStorage.setItem(LS_SESSIONS, JSON.stringify(arr));
+  const getCurrentId = () => localStorage.getItem(LS_CURRENT);
+  const setCurrentId = (id) => localStorage.setItem(LS_CURRENT, id || '');
+
+  function toDisplayString(val){
+    if (val == null) return '';
+    if (typeof val === 'string') return val;
+    try { return JSON.stringify(val, null, 2); } catch { return String(val); }
+  }
+  function timeHHMM(d = new Date()){
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
@@ -133,7 +585,6 @@ function parseMessageWithCitations(text) {
     sources = lines.map((line, i) => {
       const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
       const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
-
       return {
         number: String(i + 1),
         title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
@@ -152,11 +603,11 @@ function parseMessageWithCitations(text) {
       const n = Math.min(markerIdx, sources.length);
       return ` [${n}]`;
     });
-
     if (!/\[\d+\]/.test(mainText)) {
       mainText = mainText.trimEnd() + ' [1]';
     }
-@@ -611,620 +620,632 @@
+  } else {
+    // Geen bronnenblok: strip Azure artefacts
     mainText = mainText.replace(/【[^】]*source】/g, '');
   }
 
@@ -165,11 +616,6 @@ function parseMessageWithCitations(text) {
   html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
              .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
              .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
-
-
-
-
-
 
   html = escapeHtml(html)
            .replace(/\|\|\|B\|\|\|/g, '<strong>')
@@ -181,18 +627,11 @@ function parseMessageWithCitations(text) {
            .replace(/\n\n+/g, '</p><p>')
            .replace(/\n/g, '<br>');
 
-
-
-
-
-
-
   html = '<p>' + html + '</p>';
   html = html.replace(/<p>\s*<\/p>/g, '');
 
   return { html, sources, headerLabel };
 }
-
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
