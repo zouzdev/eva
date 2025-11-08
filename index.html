@@ -606,7 +606,7 @@ function parseMessageWithCitations(text) {
     // **bold**
     t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-    // Citatie markers: 
+    // Citatie markers: 【i:j†source】 → genummerde verwijzingen
     t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
       const key = `${a}:${b}`;
       if (!citeMap.has(key)) {
@@ -615,6 +615,12 @@ function parseMessageWithCitations(text) {
       }
       return `<span class="citation-ref" data-citation="${citeMap.get(key)}">${citeMap.get(key)}</span>`;
     });
+
+    // Dubbele aanhalingstekens in response netjes opmaken:
+    //  - Vervang "iets" door <q>iets</q>
+    //  - Werkt ook midden in de zin, meerdere keren per regel
+    //  - Vermijdt regeleinde in match om runaway te voorkomen
+    t = t.replace(/"([^"\n]+)"/g, (_m, inner) => `<q>${inner}</q>`);
 
     return t;
   }
