@@ -198,14 +198,6 @@
   .tick svg{ width:14px; height:14px; display:block; }
 
   /* Citation Numbers in Text */
-  /* zelfde highlight voor <a.citation-link> als voor .citation-item */
-  .citation-link.highlight{
-    background: var(--citation-hover);
-    border-color: var(--brand);
-    transform: translateX(3px);
-    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
-  }
-
   .citation-ref {
     display: inline-flex;
     align-items: center;
@@ -1142,36 +1134,32 @@ function parseMessageWithCitations(text) {
     typeNextChunk();
   }
 
-function attachCitationHandlers(bubble, wrap, sources) {
-  bubble.querySelectorAll('.citation-ref').forEach(ref => {
-    ref.addEventListener('click', function () {
-      const num = this.getAttribute('data-citation');
+  function attachCitationHandlers(bubble, wrap, sources) {
+    // If exactly one source and it has a URL: clicking [1] opens it directly
+    if (sources.length === 1 && sources[0].url) {
+      bubble.querySelectorAll('.citation-ref').forEach(ref => {
+        ref.style.cursor = 'pointer';
+        ref.addEventListener('click', () => {
+          window.open(sources[0].url, '_blank', 'noopener');
+        });
+      });
+      return;
+    }
 
-      // probeer eerst de multi-bronnen lijst
-      let item = wrap.querySelector(`.citation-item[data-source="${num}"]`);
-      if (item) {
-        wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-        item.classList.add('highlight');
-        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setTimeout(() => item.classList.remove('highlight'), 1500);
-        return;
-      }
-
-      // fallback: single-bron layout
-      const singleLink = wrap.querySelector('.citations.single .citation-link');
-      if (singleLink) {
-        singleLink.classList.add('highlight');
-        singleLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setTimeout(() => singleLink.classList.remove('highlight'), 1500);
-
-        // optioneel: open ook de URL (indien aanwezig)
-        const href = singleLink.getAttribute('href');
-        if (href) window.open(href, '_blank', 'noopener');
-      }
+    // Otherwise: highlight behavior + click-through if url exists
+    bubble.querySelectorAll('.citation-ref').forEach(ref => {
+      ref.addEventListener('click', function() {
+        const num = this.getAttribute('data-citation');
+        const item = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+        if (item) {
+          wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+          item.classList.add('highlight');
+          item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => item.classList.remove('highlight'), 1500);
+        }
+      });
     });
-  });
-}
-
+  }
 
   let sending = false;
   async function sendMessage() {
