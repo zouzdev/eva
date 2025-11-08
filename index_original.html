@@ -40,8 +40,8 @@
     --user-grad-b: #6F56E6;
     --assistant-bg: #ffffff;
     --assistant-border: rgba(10,12,20,.06);
-    --assistant-shadow: 0 6px 24px rgba(14, 18, 33, 0.06);
-    --user-shadow: 0 8px 24px rgba(104, 70, 220, 0.22);
+    --assistant-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+    --user-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
     --time: #a6adbd;
     --tick: #e8e8ff;
 
@@ -554,153 +554,139 @@
   }
 
   // ---------- Citations Parsing ----------
-  function parseMessageWithCitations(text) {
-    // First: strip Azure markers like 
-    text = text.replace(/【\d+:\d+†source】/g, '').replace(/【\d+†source】/g, '');
+function parseMessageWithCitations(text) {
+  // Zoek naar "Bronnen:" of "Sources:"
+  const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
+  const m = text.match(headingRe);
 
-    // Check if message has "Bronnen:" block
-    const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
-    if (hasBronnen) {
-      const parts = text.split(/\n\s*Bronnen:\s*\n/i);
-      const mainText = parts[0].trim();
-      const sourcesText = parts[1] || '';
+  let mainText = text;
+  let sourcesText = '';
+  let headerLabel = 'Bronnen'; // default NL
+  let sources = [];
 
-      const sources = [];
-      const sourceLines = sourcesText.split('\n').filter(line => line.trim());
-
-      sourceLines.forEach(line => {
-        // Try to pull out [n], title, location, date and ANY url
-        // Examples we support:
-        // [1] Auto regeling The Hup.pdf | Review-MvWpdf (1) | Datum: onbekend https://.../file.pdf
-        const numMatch = line.match(/\[(\d+)\]/);
-        const urlMatch = line.match(/https?:\/\/\S+/i);
-        const partsPipe = line.replace(/\[(\d+)\]\s*/,'').split('|').map(s => s.trim());
-        const number = numMatch ? numMatch[1] : String(sources.length + 1);
-        const title = partsPipe[0] || line.replace(/\[(\d+)\]\s*/,'').trim();
-        const location = partsPipe[1] || '';
-        const date = partsPipe[2] || '';
-        const url = urlMatch ? urlMatch[0] : '';
-
-        sources.push({ number, title, location, date, url });
-      });
-
-      // Process markdown before escaping
-      let html = mainText;
-      html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC_START|||$1|||ITALIC_END|||');
-
-      // Escape HTML
-      html = escapeHtml(html);
-
-      // Restore formatting
-      html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
-      html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-      html = html.replace(/\|\|\|ITALIC_START\|\|\|/g, '<em>');
-      html = html.replace(/\|\|\|ITALIC_END\|\|\|/g, '</em>');
-
-      // Replace [n] inline only if we actually have sources
-      html = html.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
-
-      // Bullets + paragraphs
-      html = html.replace(/^- (.+)$/gm, '• $1');
-      html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-      html = '<p>' + html + '</p>';
-      html = html.replace(/<p>\s*<\/p>/g, '');
-
-      return { html, sources };
-    } else {
-      // No formatted sources; just escape + strip any weird markers we missed
-      let html = text;
-      html = html.replace(/【[\d:†]+source】/g, '');
-
-      html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-
-      html = escapeHtml(html);
-
-      html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
-      html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-
-      html = html.replace(/^- (.+)$/gm, '• $1');
-      html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-      html = '<p>' + html + '</p>';
-      html = html.replace(/<p>\s*<\/p>/g, '');
-
-      return { html, sources: [] };
-    }
+  if (m) {
+    const idx = text.search(headingRe);
+    mainText = text.slice(0, idx).trimEnd();
+    sourcesText = text.slice(idx + m[0].length);
+    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1); // behoud taal
   }
 
+  // Als we bronnen hebben, parse ze
+  if (sourcesText) {
+    const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
+    sources = lines.map((line, i) => {
+      const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
+      const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
+      return {
+        number: String(i + 1),
+        title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
+        location: parts[1] || '',
+        date: parts[2] || '',
+        url
+      };
+    });
+  }
+
+  // Azure markers → [n] verwijzingen (altijd inline maken als er bronnen zijn)
+  if (sources.length > 0) {
+    let markerIdx = 0;
+    mainText = mainText.replace(/【[^】]*source】/g, () => {
+      markerIdx += 1;
+      const n = Math.min(markerIdx, sources.length);
+      return ` [${n}]`;
+    });
+    if (!/\[\d+\]/.test(mainText)) {
+      mainText = mainText.trimEnd() + ' [1]';
+    }
+  } else {
+    // Geen bronnenblok: strip Azure artefacts
+    mainText = mainText.replace(/【[^】]*source】/g, '');
+  }
+
+  // Markdown → HTML en [n] klikbaar
+  let html = mainText;
+  html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
+             .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
+             .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
+
+  html = escapeHtml(html)
+           .replace(/\|\|\|B\|\|\|/g, '<strong>')
+           .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
+           .replace(/\|\|\|I\|\|\|/g, '<em>')
+           .replace(/\|\|\|\/I\|\|\|/g, '</em>')
+           .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
+           .replace(/^- (.+)$/gm, '• $1')
+           .replace(/\n\n+/g, '</p><p>')
+           .replace(/\n/g, '<br>');
+
+  html = '<p>' + html + '</p>';
+  html = html.replace(/<p>\s*<\/p>/g, '');
+
+  return { html, sources, headerLabel };
+}
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
 
-  function renderCitationsBlock(sources) {
-    if (sources.length === 0) return '';
+  function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
+  if (sources.length === 0) return '';
 
-    // If exactly one source: show a compact direct link block
-    if (sources.length === 1) {
-      const s = sources[0];
-      const safeTitle = escapeHtml(s.title || 'Bron');
-      const safeLoc = escapeHtml(s.location || '');
-      const safeDate = escapeHtml(s.date || '');
-      const meta = [safeLoc, safeDate].filter(Boolean).join(' • ');
-      const content = `
-        <div class="citations single">
-          <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
-            <div class="citation-number">1</div>
-            <div class="citation-content">
-              <div class="citation-title">${safeTitle}</div>
-              <div class="citation-source">${meta}</div>
-            </div>
-            <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>`;
-      return content;
-    }
-
-    // Multiple sources: show list with header
-    const citationItems = sources.map(s => {
-      const safeTitle = escapeHtml(s.title || 'Bron');
-      const safeLoc = escapeHtml(s.location || '');
-      const safeDate = escapeHtml(s.date || '');
-      const meta = [safeLoc, safeDate].filter(Boolean).join(' • ');
-      const wrapperStart = s.url ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
-                                 : `<div class="citation-item" data-source="${s.number}">`;
-      const wrapperEnd = s.url ? `</a>` : `</div>`;
-      return `
-        ${wrapperStart}
-          <div class="citation-number">${s.number}</div>
+  // Eén bron → compact zonder kop
+  if (sources.length === 1) {
+    const s = sources[0];
+    const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
+    return `
+      <div class="citations single">
+        <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
+          <div class="citation-number">1</div>
           <div class="citation-content">
-            <div class="citation-title">${safeTitle}</div>
+            <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
             <div class="citation-source">${meta}</div>
           </div>
           <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-        ${wrapperEnd}
-      `;
-    }).join('');
-
-    return `
-      <div class="citations">
-        <div class="citations-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Bronnen
-        </div>
-        <div class="citation-list">
-          ${citationItems}
-        </div>
-      </div>
-    `;
+        </a>
+      </div>`;
   }
 
+  // Meerdere bronnen → lijst met kop (Bronnen/Sources)
+  const items = sources.map(s => {
+    const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
+    const wrapperStart = s.url
+      ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
+      : `<div class="citation-item" data-source="${s.number}">`;
+    const wrapperEnd = s.url ? `</a>` : `</div>`;
+    return `
+      ${wrapperStart}
+        <div class="citation-number">${s.number}</div>
+        <div class="citation-content">
+          <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
+          <div class="citation-source">${meta}</div>
+        </div>
+        <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      ${wrapperEnd}
+    `;
+  }).join('');
+
+  return `
+    <div class="citations">
+      <div class="citations-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        ${escapeHtml(headerLabel)}
+      </div>
+      <div class="citation-list">
+        ${items}
+      </div>
+    </div>
+  `;
+}
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
@@ -1064,7 +1050,7 @@
     wrap.className = 'bubble-wrap';
 
     if (who === 'assistant') {
-      const { html, sources } = parseMessageWithCitations(text);
+      const { html, sources, headerLabel } = parseMessageWithCitations(text);
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
 
@@ -1074,13 +1060,13 @@
         msg.appendChild(wrap);
         chatlog.appendChild(msg);
         chatlog.scrollTop = chatlog.scrollHeight;
-        typewriterEffect(bubble, html, sources, wrap);
+        typewriterEffect(bubble, html, sources, wrap, headerLabel);
       } else {
         bubble.innerHTML = html;
         wrap.appendChild(bubble);
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
-          citationsEl.innerHTML = renderCitationsBlock(sources);
+          citationsEl.innerHTML = renderCitationsBlock(sources, headerLabel);
           wrap.appendChild(citationsEl.firstElementChild);
           attachCitationHandlers(bubble, wrap, sources);
         }
@@ -1114,7 +1100,7 @@
     }
   }
 
-  function typewriterEffect(bubble, html, sources, wrap) {
+  function typewriterEffect(bubble, html, sources, wrap, headerLabel) {
     const CHARS_PER_FRAME = 3;
     const FRAME_DELAY = 16;
 
@@ -1128,7 +1114,7 @@
 
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
-          citationsEl.innerHTML = renderCitationsBlock(sources);
+          citationsEl.innerHTML = renderCitationsBlock(sources, headerLabel);
           wrap.appendChild(citationsEl.firstElementChild);
           attachCitationHandlers(bubble, wrap, sources);
         }
