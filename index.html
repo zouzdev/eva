@@ -1060,7 +1060,7 @@ function parseMessageWithCitations(text) {
         msg.appendChild(wrap);
         chatlog.appendChild(msg);
         chatlog.scrollTop = chatlog.scrollHeight;
-        typewriterEffect(bubble, html, sources, wrap);
+        typewriterEffect(bubble, html, sources, wrap, headerLabel);
       } else {
         bubble.innerHTML = html;
         wrap.appendChild(bubble);
@@ -1100,7 +1100,7 @@ function parseMessageWithCitations(text) {
     }
   }
 
-  function typewriterEffect(bubble, html, sources, wrap) {
+  function typewriterEffect(bubble, html, sources, wrap, headerLabel) {
     const CHARS_PER_FRAME = 3;
     const FRAME_DELAY = 16;
 
