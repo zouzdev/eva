@@ -737,6 +737,46 @@ function parseMessageWithCitations(text) {
 
   return { html, sources };
 }
+
+  function renderCitationsBlock(sources = []) {
+  if (!Array.isArray(sources) || sources.length === 0) return "";
+
+  const items = sources.map(src => {
+    const num = src.number ?? "";
+    const title = (src.title ?? "Bron");
+    const loc = (src.location ?? "");
+    const linkAttr = src.link ? ` href="${src.link}" target="_blank" rel="noopener"` : "";
+    // anchor blijft ook zonder link klikbaar voor je JS handlers
+    return `
+      <a class="citation-item" data-source="${num}"${linkAttr}>
+        <div class="citation-number">${num}</div>
+        <div class="citation-content">
+          <div class="citation-title">${title}</div>
+          <div class="citation-source">${loc}</div>
+        </div>
+        <svg class="citation-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    `;
+  }).join("");
+
+  return `
+    <div class="citations">
+      <div class="citations-header">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Citations
+      </div>
+      <div class="citation-list">
+        ${items}
+      </div>
+    </div>
+  `;
+}
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
