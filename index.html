@@ -586,6 +586,7 @@
   }
 
   // ---------- Citations Parsing ----------
+// ---------- Citations Parsing ----------
 function parseMessageWithCitations(text) {
   if (!text) return { html: "", sources: [] };
 
@@ -596,41 +597,36 @@ function parseMessageWithCitations(text) {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
-  // 1) Splits hoofdtekst vs. "Bronnen:"
-  const bronnenMatch = text.match(/(?:^|\n)\s*Bronnen?\s*:\s*([\s\S]*)$/i);
-  const bronnenRaw = bronnenMatch ? bronnenMatch[1].trim() : "";
-  let bodyText = bronnenMatch ? text.slice(0, bronnenMatch.index).trim() : text.trim();
+  // 1) Knip het "Bronnen:" / "Sources:"-gedeelte van de body-tekst
+  const m = text.match(/(?:^|\n)\s*(Bronnen?|Sources?)\s*:\s*([\s\S]*)$/i);
+  const bronnenRaw = m ? m[2].trim() : "";
+  const bodyText   = m ? text.slice(0, m.index).trim() : text.trim();
 
-  // 2) Inline formatteren (let op: volgorde!)
-  const citations = [];
-  const citeMap = new Map();
-
+  // 2) Inline formatting (bold + inline citation badges)
+  //    Let op: we voegen GEEN extra items toe aan de citations-lijst
+  //    op basis van inline markers; de lijst komt ALLEEN uit Bronnen/Sources.
+  const citeMap = new Map();   // key -> display number
   function inline(s) {
     let t = escapeHTML(s);
 
-    // a) eerst "…" -> <q>…</q> zodat we later onze <span> niet slopen
-    t = t.replace(/"([^"\n]+)"/g, (_m, inner) => `<q>${inner}</q>`);
-
-    // b) **bold**
+    // **bold**
     t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-    // c) markers 【i:j†source】 -> badge
+    // Inline citatie-markers: 【i:j†source】 → <span class="citation-ref">n</span>
     t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
       const key = `${a}:${b}`;
-      if (!citeMap.has(key)) {
-        citeMap.set(key, citeMap.size + 1);
-        citations.push(key);
-      }
-      return `<span class="citation-ref" data-citation="${citeMap.get(key)}">${citeMap.get(key)}</span>`;
+      if (!citeMap.has(key)) citeMap.set(key, citeMap.size + 1);
+      const n = citeMap.get(key);
+      return `<span class="citation-ref" data-citation="${n}">${n}</span>`;
     });
 
     return t;
   }
 
-  // 3) Body naar HTML (zonder "Bronnen:"-deel)
+  // 3) Body-tekst omzetten (paragrafen en eenvoudige lijsten)
   const lines = bodyText.split(/\r?\n/);
   let html = "";
-  let listType = null;
+  let listType = null; // "ol" | "ul"
   let listItems = [];
   let buffer = [];
 
@@ -653,8 +649,8 @@ function parseMessageWithCitations(text) {
     const line = rawLine.trim();
     if (!line) { flushParagraph(); flushList(); continue; }
 
-    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
-    const ulMatch = line.match(/^-\s+(.*)$/);
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/); // 1. item
+    const ulMatch = line.match(/^-\s+(.*)$/);       // - item
 
     if (olMatch) {
       flushParagraph();
@@ -674,65 +670,62 @@ function parseMessageWithCitations(text) {
   flushParagraph();
   flushList();
 
-  // 4) "Bronnen:"-blok parsen -> sources
+  // 4) Bronnen/Sources naar array omzetten
+  //    Inline toont straks ALLEEN de bestandsnaam (title),
+  //    het citations-blok toont title + meta.
   const sources = [];
   if (bronnenRaw) {
+    // Splits per regel / bullet; NIET op komma’s (dat gaf spook-entries)
     const candidates = bronnenRaw
-      .split(/\r?\n|•|;|,\s(?=\[?\d+\]?)/g)
+      .split(/\r?\n|•|;/g)
       .map(s => s.trim())
       .filter(Boolean);
 
     let idx = 0;
     for (const cand of candidates) {
-      const m = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
-      let title = cand;
-      let location = "";
+      // Accepteer vormen zoals:
+      // [12] Auto regeling The Hup.pdf | Intern document | Onbekend
+      // Auto regeling The Hup.pdf | Intern document | Onbekend
+      const numMatch = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
+      const rest = (numMatch ? numMatch[2] : cand).trim();
 
-      if (m) {
-        const rest = m[2].trim();
-        const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
-        if (parts.length > 0) {
-          title = parts[0];
-          location = parts.slice(1).join(" · ");
-        } else {
-          title = rest || title;
-        }
-        const docNo = m[1];
-        location = location ? `#${docNo} · ${location}` : `#${docNo}`;
-      } else {
-        const parts = cand.split("|").map(p => p.trim()).filter(Boolean);
-        if (parts.length > 0) {
-          title = parts[0];
-          location = parts.slice(1).join(" · ");
-        }
-      }
+      const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
+
+      const title = parts[0] || "Bron";
+      const meta  = parts.slice(1).join(" · "); // voor het blokje
 
       sources.push({
         number: ++idx,
-        title: title || "Bron",
-        location
+        title,       // wordt inline gebruikt (alleen bestandsnaam)
+        meta         // alleen zichtbaar in citations-blok
+        // (optioneel) link: "https://…"
       });
     }
   }
 
-  // Belangrijk: GEEN extra items toevoegen voor inline badges
-  // (anders krijg je die ongewenste "tweede bron")
-
   return { html, sources };
 }
 
-  function renderCitationsBlock(sources = []) {
+
+// ---------- Citations renderer ----------
+function renderCitationsBlock(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) return "";
 
-  const items = sources.map((src, i) => {
-    const num = (src.number ?? (i + 1));
-    const title = (src.title ?? "Bron");
-    const linkAttr = src.link ? ` href="${src.link}" target="_blank" rel="noopener"` : "";
+  const items = sources.map(src => {
+    const n     = src.number ?? "";
+    const title = src.title ?? "Bron";
+    const meta  = src.meta  ?? "";
+    const link  = src.link  ?? "";
+
+    // anchor blijft bruikbaar voor event handlers, link is optioneel
+    const aAttrs = link ? ` href="${link}" target="_blank" rel="noopener"` : "";
+
     return `
-      <a class="citation-item" data-source="${num}"${linkAttr}>
-        <div class="citation-number">${num}</div>
+      <a class="citation-item" data-source="${n}"${aAttrs}>
+        <div class="citation-number">${n}</div>
         <div class="citation-content">
           <div class="citation-title">${title}</div>
+          ${meta ? `<div class="citation-source">${meta}</div>` : ""}
         </div>
         <svg class="citation-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2"
