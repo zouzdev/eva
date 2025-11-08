@@ -602,138 +602,169 @@
   }
 
   // ---------- Citations Parsing ----------
-  function parseMessageWithCitations(text) {
-    // Check if message has proper citation format first
-    const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
-    
-    if (hasBronnen) {
-      // Format: [1] text [2] ... \n\nBronnen:\n[1] Title | Location | Date
-      const parts = text.split(/\n\s*Bronnen:\s*\n/i);
-      const mainText = parts[0].trim();
-      const sourcesText = parts[1] || '';
-      
-      // Parse sources - format: [1] Title | Location | Date
-      const sources = [];
-      const sourceLines = sourcesText.split('\n').filter(line => line.trim());
-      
-      sourceLines.forEach(line => {
-        const match = line.match(/\[(\d+)\]\s*(.+?)\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/);
-        if (match) {
-          sources.push({
-            number: match[1],
-            title: match[2].trim(),
-            location: match[3].trim(),
-            date: match[4]?.trim() || ''
-          });
-        }
-      });
-      
-      // Process markdown before escaping HTML
-      let html = mainText;
-      
-      // Convert markdown formatting BEFORE escape
-      // Bold: **text** or __text__
-      html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      
-      // Italic: *text* or _text_ (but not part of bold)
-      html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC_START|||$1|||ITALIC_END|||');
-      
-      // Now escape HTML
-      html = escapeHtml(html);
-      
-      // Replace placeholders with actual HTML
-      html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
-      html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-      html = html.replace(/\|\|\|ITALIC_START\|\|\|/g, '<em>');
-      html = html.replace(/\|\|\|ITALIC_END\|\|\|/g, '</em>');
-      
-      // Replace [1], [2] etc. with citation elements
-      html = html.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
-      
-      // Convert bullet points
-      html = html.replace(/^- (.+)$/gm, '• $1');
-      
-      // Convert double newlines to paragraphs, single to breaks
-      html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-      html = '<p>' + html + '</p>';
-      
-      // Clean up empty paragraphs
-      html = html.replace(/<p><\/p>/g, '');
-      html = html.replace(/<p>\s*<\/p>/g, '');
-      
-      return { html, sources };
+  // ---------- Citations Parsing ----------
+function parseMessageWithCitations(text) {
+  if (!text) return { html: "", sources: [] };
+
+  // Local escaper (onafhankelijk van escapeHtml hieronder)
+  const escapeHTML = (s) =>
+    s.replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;")
+     .replace(/'/g, "&#39;");
+
+  // 1) Pak het "Bronnen:" / "Sources:" deel achteraan weg uit de hoofdtekst
+  const m = text.match(/(?:^|\n)\s*(Bronnen?|Sources?)\s*:\s*([\s\S]*)$/i);
+  const bronnenRaw = m ? m[2].trim() : "";
+  const bodyText   = m ? text.slice(0, m.index).trim() : text.trim();
+
+  // 2) Inline formatting & badges (alleen badges tonen, geen extra items toevoegen)
+  const citeMap = new Map();   // key -> badge nummer
+  function inline(s) {
+    let t = escapeHTML(s);
+
+    // **bold**
+    t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    // Inline Azure markers: 【i:j†source】 → <span class="citation-ref">n</span>
+    t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
+      const key = `${a}:${b}`;
+      if (!citeMap.has(key)) citeMap.set(key, citeMap.size + 1);
+      const n = citeMap.get(key);
+      return `<span class="citation-ref" data-citation="${n}" title="Klik voor bron">${n}</span>`;
+    });
+
+    // Eenvoudige quotes
+    t = t.replace(/"([^"\n]+)"/g, (_m, inner) => `<q>${inner}</q>`);
+
+    return t;
+  }
+
+  // 3) Paragrafen & lijstjes renderen (van de hoofdtekst)
+  const lines = bodyText.split(/\r?\n/);
+  let html = "";
+  let listType = null; // "ol" | "ul"
+  let listItems = [];
+  let buffer = [];
+
+  function flushParagraph() {
+    if (buffer.length) {
+      html += `<p>${inline(buffer.join(" ").trim())}</p>`;
+      buffer = [];
+    }
+  }
+  function flushList() {
+    if (listType && listItems.length) {
+      const items = listItems.map(li => `<li>${inline(li.trim())}</li>`).join("");
+      html += listType === "ol" ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
+    }
+    listType = null;
+    listItems = [];
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) { flushParagraph(); flushList(); continue; }
+
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/); // 1. item
+    const ulMatch = line.match(/^-\s+(.*)$/);       // - item
+
+    if (olMatch) {
+      flushParagraph();
+      if (listType && listType !== "ol") flushList();
+      listType = "ol";
+      listItems.push(olMatch[2]);
+    } else if (ulMatch) {
+      flushParagraph();
+      if (listType && listType !== "ul") flushList();
+      listType = "ul";
+      listItems.push(ulMatch[1]);
     } else {
-      // Fallback: Handle Azure AI default format 【4:0†source】
-      let html = text;
-      const sources = [];
-      
-      // Remove Azure citation markers
-      html = html.replace(/【[\d:†]+source】/g, '');
-      
-      // Convert markdown formatting BEFORE escape
-      html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      
-      // Escape HTML
-      html = escapeHtml(html);
-      
-      // Replace placeholders
-      html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
-      html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-      
-      // Convert bullet points
-      html = html.replace(/^- (.+)$/gm, '• $1');
-      
-      // Convert newlines
-      html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-      html = '<p>' + html + '</p>';
-      
-      // Clean up
-      html = html.replace(/<p><\/p>/g, '');
-      html = html.replace(/<p>\s*<\/p>/g, '');
-      
-      return { html, sources };
+      if (listType) flushList();
+      buffer.push(line);
+    }
+  }
+  flushParagraph();
+  flushList();
+
+  // 4) Bronnen/Sources-parsing → alleen bestandsnaam als titel in tekst;
+  //    meta (bv. "Intern document | Onbekend") alléén in het citations-blok
+  const sources = [];
+  if (bronnenRaw) {
+    // Splits per regel / bullet / puntkomma – NIET op komma’s
+    const candidates = bronnenRaw
+      .split(/\r?\n|•|;/g)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    let idx = 0;
+    for (const cand of candidates) {
+      // Ondersteunt:
+      // [12] Auto regeling The Hup.pdf | Intern document | Onbekend
+      // Auto regeling The Hup.pdf | Intern document | Onbekend
+      const numMatch = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
+      const rest = (numMatch ? numMatch[2] : cand).trim();
+
+      const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
+      const title = parts[0] || "Bron";
+      const meta  = parts.slice(1).join(" · "); // in het blokje
+
+      sources.push({
+        number: ++idx,
+        title,
+        meta
+        // optioneel: link: "https://…"
+      });
     }
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+  return { html, sources };
+}
 
-  function renderCitationsBlock(sources) {
-    if (sources.length === 0) return '';
-    
-    const citationItems = sources.map(s => `
-      <div class="citation-item" data-source="${s.number}">
-        <div class="citation-number">${s.number}</div>
-        <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title)}</div>
-          <div class="citation-source">${escapeHtml(s.location)}${s.date ? ' • ' + escapeHtml(s.date) : ''}</div>
-        </div>
-        <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-    `).join('');
-    
+
+// ---------- Citations renderer ----------
+function renderCitationsBlock(sources = []) {
+  if (!Array.isArray(sources) || sources.length === 0) return "";
+
+  const items = sources.map(src => {
+    const n     = src.number ?? "";
+    const title = src.title ?? "Bron";
+    const meta  = src.meta  ?? "";
+    const link  = src.link  ?? "";
+
+    const aAttrs = link ? ` href="${link}" target="_blank" rel="noopener"` : "";
+
     return `
-      <div class="citations">
-        <div class="citations-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Bronnen
+      <a class="citation-item" data-source="${n}"${aAttrs}>
+        <div class="citation-number">${n}</div>
+        <div class="citation-content">
+          <div class="citation-title">${title.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+          ${meta ? `<div class="citation-source">${meta.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>` : ""}
         </div>
-        <div class="citation-list">
-          ${citationItems}
-        </div>
-      </div>
+        <svg class="citation-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
     `;
-  }
+  }).join("");
 
+  return `
+    <div class="citations">
+      <div class="citations-header">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Citations
+      </div>
+      <div class="citation-list">
+        ${items}
+      </div>
+    </div>
+  `;
+}
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
