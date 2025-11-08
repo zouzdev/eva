@@ -596,23 +596,25 @@ function parseMessageWithCitations(text) {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
-  // ---- 1) Splits hoofdtekst vs. "Bronnen:"-blok ----
-  // Vangt alles vanaf de eerste "Bronnen:" (of "Bronnen :") t/m het einde.
+  // 1) Splits hoofdtekst vs. "Bronnen:"
   const bronnenMatch = text.match(/(?:^|\n)\s*Bronnen?\s*:\s*([\s\S]*)$/i);
   const bronnenRaw = bronnenMatch ? bronnenMatch[1].trim() : "";
   let bodyText = bronnenMatch ? text.slice(0, bronnenMatch.index).trim() : text.trim();
 
-  // ---- 2) Parse inline + typografie helper ----
-  const citations = [];            // verzamelt inline keys (【i:j†source】)
+  // 2) Inline formatteren (let op: volgorde!)
+  const citations = [];
   const citeMap = new Map();
 
   function inline(s) {
     let t = escapeHTML(s);
 
-    // **bold**
+    // a) eerst "…" -> <q>…</q> zodat we later onze <span> niet slopen
+    t = t.replace(/"([^"\n]+)"/g, (_m, inner) => `<q>${inner}</q>`);
+
+    // b) **bold**
     t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-    // Inline citatie markers: 【i:j†source】 → genummerde badges
+    // c) markers 【i:j†source】 -> badge
     t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
       const key = `${a}:${b}`;
       if (!citeMap.has(key)) {
@@ -622,17 +624,13 @@ function parseMessageWithCitations(text) {
       return `<span class="citation-ref" data-citation="${citeMap.get(key)}">${citeMap.get(key)}</span>`;
     });
 
-    // Dubbele aanhalingstekens → <q>…</q>
-    t = t.replace(/"([^"\n]+)"/g, (_m, inner) => `<q>${inner}</q>`);
-
     return t;
   }
 
-  // ---- 3) Body omzetten naar HTML (zonder "Bronnen:"-deel) ----
+  // 3) Body naar HTML (zonder "Bronnen:"-deel)
   const lines = bodyText.split(/\r?\n/);
-
   let html = "";
-  let listType = null;   // "ol" | "ul"
+  let listType = null;
   let listItems = [];
   let buffer = [];
 
@@ -655,8 +653,8 @@ function parseMessageWithCitations(text) {
     const line = rawLine.trim();
     if (!line) { flushParagraph(); flushList(); continue; }
 
-    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);  // 1. item
-    const ulMatch = line.match(/^-\s+(.*)$/);        // - item
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    const ulMatch = line.match(/^-\s+(.*)$/);
 
     if (olMatch) {
       flushParagraph();
@@ -676,26 +674,22 @@ function parseMessageWithCitations(text) {
   flushParagraph();
   flushList();
 
-  // ---- 4) "Bronnen:"-blok parsen naar sources ----
+  // 4) "Bronnen:"-blok parsen -> sources
   const sources = [];
-
   if (bronnenRaw) {
-    // Split op nieuwe regels of " • " of ";"
     const candidates = bronnenRaw
-      .split(/\r?\n|•|;|,\s(?=\[?\d+\]?)/g) // ook splitsen bij ", [n]"
+      .split(/\r?\n|•|;|,\s(?=\[?\d+\]?)/g)
       .map(s => s.trim())
       .filter(Boolean);
 
     let idx = 0;
     for (const cand of candidates) {
-      // Typisch patroon: [4] Titel | Meta1 | Meta2
       const m = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
       let title = cand;
       let location = "";
 
       if (m) {
         const rest = m[2].trim();
-        // Als er pipes staan, neem links van 1e pipe als titel, rest als meta
         const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
         if (parts.length > 0) {
           title = parts[0];
@@ -703,11 +697,9 @@ function parseMessageWithCitations(text) {
         } else {
           title = rest || title;
         }
-        // Handige toevoeging: geef het doc-nummer weer in location (optioneel)
         const docNo = m[1];
         location = location ? `#${docNo} · ${location}` : `#${docNo}`;
       } else {
-        // Geen [n] gevonden: probeer alsnog "Titel | meta" te scheiden
         const parts = cand.split("|").map(p => p.trim()).filter(Boolean);
         if (parts.length > 0) {
           title = parts[0];
@@ -723,17 +715,8 @@ function parseMessageWithCitations(text) {
     }
   }
 
-  // ---- 5) Inline citaties toevoegen als aparte bronnen (optioneel)
-  // Als je inline badges ook als items in de lijst wilt tonen:
-  if (citations.length) {
-    citations.forEach((c) => {
-      sources.push({
-        number: sources.length + 1,
-        title: "Bron",
-        location: c // bv. "4:2"
-      });
-    });
-  }
+  // Belangrijk: GEEN extra items toevoegen voor inline badges
+  // (anders krijg je die ongewenste "tweede bron")
 
   return { html, sources };
 }
