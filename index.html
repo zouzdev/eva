@@ -586,7 +586,6 @@
   }
 
   // ---------- Citations Parsing ----------
-// ---------- Citations Parsing ----------
 function parseMessageWithCitations(text) {
   if (!text) return { html: "", sources: [] };
 
@@ -597,7 +596,14 @@ function parseMessageWithCitations(text) {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
-  const citations = [];
+  // ---- 1) Splits hoofdtekst vs. "Bronnen:"-blok ----
+  // Vangt alles vanaf de eerste "Bronnen:" (of "Bronnen :") t/m het einde.
+  const bronnenMatch = text.match(/(?:^|\n)\s*Bronnen?\s*:\s*([\s\S]*)$/i);
+  const bronnenRaw = bronnenMatch ? bronnenMatch[1].trim() : "";
+  let bodyText = bronnenMatch ? text.slice(0, bronnenMatch.index).trim() : text.trim();
+
+  // ---- 2) Parse inline + typografie helper ----
+  const citations = [];            // verzamelt inline keys (【i:j†source】)
   const citeMap = new Map();
 
   function inline(s) {
@@ -606,7 +612,7 @@ function parseMessageWithCitations(text) {
     // **bold**
     t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-    // Citatie markers: 
+    // Inline citatie markers: 【i:j†source】 → genummerde badges
     t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
       const key = `${a}:${b}`;
       if (!citeMap.has(key)) {
@@ -616,13 +622,17 @@ function parseMessageWithCitations(text) {
       return `<span class="citation-ref" data-citation="${citeMap.get(key)}">${citeMap.get(key)}</span>`;
     });
 
+    // Dubbele aanhalingstekens → <q>…</q>
+    t = t.replace(/"([^"\n]+)"/g, (_m, inner) => `<q>${inner}</q>`);
+
     return t;
   }
 
-  const lines = text.trim().split(/\r?\n/);
+  // ---- 3) Body omzetten naar HTML (zonder "Bronnen:"-deel) ----
+  const lines = bodyText.split(/\r?\n/);
 
   let html = "";
-  let listType = null;  // "ol" | "ul"
+  let listType = null;   // "ol" | "ul"
   let listItems = [];
   let buffer = [];
 
@@ -632,7 +642,6 @@ function parseMessageWithCitations(text) {
       buffer = [];
     }
   }
-
   function flushList() {
     if (listType && listItems.length) {
       const items = listItems.map(li => `<li>${inline(li.trim())}</li>`).join("");
@@ -644,14 +653,10 @@ function parseMessageWithCitations(text) {
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    if (!line) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
+    if (!line) { flushParagraph(); flushList(); continue; }
 
-    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);    // 1. item
-    const ulMatch = line.match(/^-\s+(.*)$/);          // - item
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);  // 1. item
+    const ulMatch = line.match(/^-\s+(.*)$/);        // - item
 
     if (olMatch) {
       flushParagraph();
@@ -668,64 +673,70 @@ function parseMessageWithCitations(text) {
       buffer.push(line);
     }
   }
-
   flushParagraph();
   flushList();
 
-  return {
-    html,
-    sources: citations.map((c, i) => ({
-      number: i + 1,
-      title: "Bron",
-      location: c
-    }))
-  };
+  // ---- 4) "Bronnen:"-blok parsen naar sources ----
+  const sources = [];
+
+  if (bronnenRaw) {
+    // Split op nieuwe regels of " • " of ";"
+    const candidates = bronnenRaw
+      .split(/\r?\n|•|;|,\s(?=\[?\d+\]?)/g) // ook splitsen bij ", [n]"
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    let idx = 0;
+    for (const cand of candidates) {
+      // Typisch patroon: [4] Titel | Meta1 | Meta2
+      const m = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
+      let title = cand;
+      let location = "";
+
+      if (m) {
+        const rest = m[2].trim();
+        // Als er pipes staan, neem links van 1e pipe als titel, rest als meta
+        const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          title = parts[0];
+          location = parts.slice(1).join(" · ");
+        } else {
+          title = rest || title;
+        }
+        // Handige toevoeging: geef het doc-nummer weer in location (optioneel)
+        const docNo = m[1];
+        location = location ? `#${docNo} · ${location}` : `#${docNo}`;
+      } else {
+        // Geen [n] gevonden: probeer alsnog "Titel | meta" te scheiden
+        const parts = cand.split("|").map(p => p.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          title = parts[0];
+          location = parts.slice(1).join(" · ");
+        }
+      }
+
+      sources.push({
+        number: ++idx,
+        title: title || "Bron",
+        location
+      });
+    }
+  }
+
+  // ---- 5) Inline citaties toevoegen als aparte bronnen (optioneel)
+  // Als je inline badges ook als items in de lijst wilt tonen:
+  if (citations.length) {
+    citations.forEach((c) => {
+      sources.push({
+        number: sources.length + 1,
+        title: "Bron",
+        location: c // bv. "4:2"
+      });
+    });
+  }
+
+  return { html, sources };
 }
-
-
-function renderCitationsBlock(sources = []) {
-  if (!Array.isArray(sources) || sources.length === 0) return "";
-
-  const items = sources
-    .map(src => {
-      const num = src.number;
-      const title = src.title ?? "Bron";
-      const loc = src.location ?? "";
-
-      return `
-        <a class="citation-item" data-source="${num}">
-          <div class="citation-number">${num}</div>
-          <div class="citation-content">
-            <div class="citation-title">${title}</div>
-            <div class="citation-source">${loc}</div>
-          </div>
-          <svg class="citation-icon" viewBox="0 0 24 24">
-            <path d="M8 5l8 7-8 7"
-              stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-      `;
-    })
-    .join("");
-
-  return `
-    <div class="citations">
-      <div class="citations-header">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 6v12M6 12h12"
-            stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Citations
-      </div>
-      <div class="citation-list">
-        ${items}
-      </div>
-    </div>
-  `;
-}
-
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
