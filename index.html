@@ -94,6 +94,14 @@
     z-index: 1200;
   }
   .sb-overlay.show{ display:block; }
+  /* H1-styling binnen assistant bubbels */
+.bubble h1.msg-h1{
+  font-size: 20px;          /* oogt als H1 in chat */
+  line-height: 1.25;
+  font-weight: 800;         /* bold */
+  margin: 0 0 6px;
+}
+
 
   .page{ min-height: 100dvh; transition: margin-right .18s ease; }
   body.sb-open .page{ margin-right: var(--sb-w); }
@@ -561,33 +569,33 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
-  // ---------- Citations Parsing ----------
-function parseMessageWithCitations(text) {
-  // Zoek naar "Bronnen:" of "Sources:"
+ function parseMessageWithCitations(text) {
+  // Zoek naar "Bronnen:" of "Sources:" (kop + dubbelepunt op een eigen regel)
   const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
   const m = text.match(headingRe);
 
   let mainText = text;
   let sourcesText = '';
-  let headerLabel = 'Bronnen'; // default NL
+  let headerLabel = 'Bronnen'; // default (NL)
   let sources = [];
 
   if (m) {
     const idx = text.search(headingRe);
     mainText = text.slice(0, idx).trimEnd();
     sourcesText = text.slice(idx + m[0].length);
-    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1); // behoud taal
+    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1); // behoud taal: Bronnen / Sources
   }
 
-  // Als we bronnen hebben, parse ze
+  // Parse bronnen-lijst (elke niet-lege regel = één bron)
   if (sourcesText) {
     const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
     sources = lines.map((line, i) => {
-      const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
-      const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
+      const url = (line.match(/https?:\/\/\S+/i)?.[0]) || '';
+      const noNum = line.replace(/^\s*\[\d+\]\s*/,''); // strip [n] aan het begin
+      const parts = noNum.split('|').map(s => s.trim());
       return {
         number: String(i + 1),
-        title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
+        title: parts[0] || noNum,
         location: parts[1] || '',
         date: parts[2] || '',
         url
@@ -595,7 +603,7 @@ function parseMessageWithCitations(text) {
     });
   }
 
-  // Azure markers → [n] verwijzingen (altijd inline maken als er bronnen zijn)
+  // Azure artefacts → inline [n] verwijzingen
   if (sources.length > 0) {
     let markerIdx = 0;
     mainText = mainText.replace(/【[^】]*source】/g, () => {
@@ -603,6 +611,7 @@ function parseMessageWithCitations(text) {
       const n = Math.min(markerIdx, sources.length);
       return ` [${n}]`;
     });
+    // Als er nog geen [n] in de tekst staat, forceer [1] achteraan
     if (!/\[\d+\]/.test(mainText)) {
       mainText = mainText.trimEnd() + ' [1]';
     }
@@ -611,27 +620,39 @@ function parseMessageWithCitations(text) {
     mainText = mainText.replace(/【[^】]*source】/g, '');
   }
 
-  // Markdown → HTML en [n] klikbaar
-  let html = mainText;
-  html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
-             .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
-             .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
+  // Markdown → placeholders
+  let html = mainText
+    // ### Heading → H1 (bold)
+    .replace(/^\s*###\s*(.+)$/gm, '|||H1|||$1|||/H1|||')
+    // **bold** en __bold__
+    .replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
+    .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
+    // *italic*
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
 
+  // Escape en placeholders terugzetten als HTML
   html = escapeHtml(html)
-           .replace(/\|\|\|B\|\|\|/g, '<strong>')
-           .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
-           .replace(/\|\|\|I\|\|\|/g, '<em>')
-           .replace(/\|\|\|\/I\|\|\|/g, '</em>')
-           .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
-           .replace(/^- (.+)$/gm, '• $1')
-           .replace(/\n\n+/g, '</p><p>')
-           .replace(/\n/g, '<br>');
+    .replace(/\|\|\|H1\|\|\|/g, '<h1 class="msg-h1"><strong>')
+    .replace(/\|\|\|\/H1\|\|\|/g, '</strong></h1>')
+    .replace(/\|\|\|B\|\|\|/g, '<strong>')
+    .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
+    .replace(/\|\|\|I\|\|\|/g, '<em>')
+    .replace(/\|\|\|\/I\|\|\|/g, '</em>')
+    // [n] → klikbare referentie
+    .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
+    // simpele bullets
+    .replace(/^- (.+)$/gm, '• $1')
+    // paragrafen/breaks
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br>');
 
+  // Paragraaf-wrapping
   html = '<p>' + html + '</p>';
   html = html.replace(/<p>\s*<\/p>/g, '');
 
   return { html, sources, headerLabel };
 }
+
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
