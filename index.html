@@ -584,21 +584,45 @@
   function timeHHMM(d = new Date()){
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
-function typewriterEffect(bubble, finalHTML, onDone){
-  const tmp = document.createElement('div'); 
-  tmp.innerHTML = finalHTML;
-  const text = tmp.textContent || tmp.innerText || '';
-  let i = 0;
+function typewriterEffectHTML(bubble, finalHTML, cps = 40){
+  // Zet eind-HTML in de bubble (geen latere swap → geen flash)
+  bubble.innerHTML = finalHTML;
+
+  // (A) Dedupe meteen dubbele citation-badges naast elkaar
+  dedupeAdjacentRefs(bubble);
+
+  // (B) Loop door ALLE tekstnodes en onthul teken-voor-teken (markup blijft staan)
+  const walker = document.createTreeWalker(
+    bubble, NodeFilter.SHOW_TEXT,
+    { acceptNode: n => n.nodeValue.trim().length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT }
+  );
+  const nodes = [];
+  let node;
+  while ((node = walker.nextNode())) { nodes.push({ node, text: node.nodeValue }); node.nodeValue = ""; }
+
+  const total = nodes.reduce((s, o) => s + o.text.length, 0);
+  let i = 0, delay = 1000 / cps;
 
   (function step(){
-    if (i >= text.length){
-      bubble.innerHTML = finalHTML;       // pas aan het eind HTML tonen
-      onDone && onDone();
-      return;
+    if (i >= total) return;
+    let k = i;
+    for (const o of nodes){
+      if (k >= o.text.length){ o.node.nodeValue = o.text; k -= o.text.length; }
+      else { o.node.nodeValue = o.text.slice(0, k + 1); break; }
     }
-    bubble.textContent = text.slice(0, ++i); // 1 char per tick
-    setTimeout(step, 24);                    // ~40 cps (langzamer)
+    i++; setTimeout(step, delay);
   })();
+}
+
+function dedupeAdjacentRefs(container){
+  const refs = Array.from(container.querySelectorAll('.citation-ref'));
+  for (let i = 1; i < refs.length; i++){
+    const prev = refs[i].previousElementSibling;
+    if (prev && prev.classList.contains('citation-ref') &&
+        prev.textContent === refs[i].textContent) {
+      refs[i].remove(); // verwijder dubbele badge direct naast elkaar
+    }
+  }
 }
   
 function parseMessageWithCitations(text) {
@@ -1088,40 +1112,41 @@ function renderCitationsBlock(sources = []) {
   wrap.className = 'bubble-wrap';
 
   if (who === 'assistant') {
-    // 1) Eerst parsen
+    // 1) Parse: HTML-body + bronnenlijst
     const { html, sources } = parseMessageWithCitations(text);
 
-    // 2) Eén bubble maken
+    // 2) Maak één bubble en start DOM-bewuste typewriter (behoudt opmaak)
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     wrap.appendChild(bubble);
 
-    // 3) Typewriter pas nu starten (nu bestaat html)
-    typewriterEffect(bubble, html, () => {
-      if (sources.length > 0) {
-        const citationsEl = document.createElement('div');
-        citationsEl.innerHTML = renderCitationsBlock(sources);
-        wrap.appendChild(citationsEl.firstElementChild);
+    // << BELANGRIJK: gebruik de nieuwe functie >>
+    typewriterEffectHTML(bubble, html, 40); // 40 chars/sec; pas aan naar smaak
 
-        // Click-handlers
-        bubble.querySelectorAll('.citation-ref').forEach(ref => {
-          ref.addEventListener('click', function () {
-            const num = this.getAttribute('data-citation');
-            const ci = wrap.querySelector(`.citation-item[data-source="${num}"]`);
-            if (ci) {
-              wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-              ci.classList.add('highlight');
-              ci.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              setTimeout(() => ci.classList.remove('highlight'), 1500);
-            }
-          });
-        });
-        wrap.querySelectorAll('.citation-item').forEach(item => {
-          item.addEventListener('click', function (e) {
-            e.preventDefault();
-            // eventueel: open link of detail
-          });
-        });
+    // 3) Citations-blok toevoegen (direct, geen callback nodig)
+    if (sources.length > 0) {
+      const citationsEl = document.createElement('div');
+      citationsEl.innerHTML = renderCitationsBlock(sources);
+      wrap.appendChild(citationsEl.firstElementChild);
+    }
+
+    // 4) Click-handlers — kunnen meteen, HTML staat al in de DOM
+    wrap.addEventListener('click', (e) => {
+      const ref = e.target.closest('.citation-ref');
+      if (ref) {
+        const num = ref.getAttribute('data-citation');
+        const ci = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+        if (ci) {
+          wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+          ci.classList.add('highlight');
+          ci.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => ci.classList.remove('highlight'), 1500);
+        }
+      }
+      const item = e.target.closest('.citation-item');
+      if (item) {
+        e.preventDefault();
+        // hier eventueel: window.open(item.href, '_blank');
       }
     });
 
@@ -1150,6 +1175,7 @@ function renderCitationsBlock(sources = []) {
   chatlog.appendChild(msg);
   chatlog.scrollTop = chatlog.scrollHeight;
 }
+
 
   let sending = false;
   async function sendMessage() {
