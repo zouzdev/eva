@@ -1116,96 +1116,75 @@ function renderCitationsBlock(sources = []) {
   delPopup.addEventListener('click', (e)=>{ if(e.target===delPopup) closeDeleteModal(); });
 
   function addMessage(text, who = 'assistant', timeObj = new Date()) {
-    const msg = document.createElement('div');
-    msg.className = `msg ${who}`;
+  const msg = document.createElement('div');
+  msg.className = `msg ${who}`;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'bubble-wrap';
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap';
 
-    if (who === 'assistant') {
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      wrap.appendChild(bubble);
-      
-      typewriterEffect(bubble, html, () => {
-        if (sources.length > 0) {
-          const citationsEl = document.createElement('div');
-          citationsEl.innerHTML = renderCitationsBlock(sources);
-          wrap.appendChild(citationsEl.firstElementChild);
-          // (je bestaande click-handlers hier laten)
-        }
-      });
+  if (who === 'assistant') {
+    // 1) Eerst parsen
+    const { html, sources } = parseMessageWithCitations(text);
 
-      // Parse citations for assistant messages
-      const { html, sources } = parseMessageWithCitations(text);
-      
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.innerHTML = html;
-      wrap.appendChild(bubble);
-      
-      // Add citations if present
+    // 2) Eén bubble maken
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    wrap.appendChild(bubble);
+
+    // 3) Typewriter pas nu starten (nu bestaat html)
+    typewriterEffect(bubble, html, () => {
       if (sources.length > 0) {
         const citationsEl = document.createElement('div');
         citationsEl.innerHTML = renderCitationsBlock(sources);
         wrap.appendChild(citationsEl.firstElementChild);
-        
-        // Add click handlers after rendering
-        setTimeout(() => {
-          // Citation ref clicks
-          bubble.querySelectorAll('.citation-ref').forEach(ref => {
-            ref.addEventListener('click', function() {
-              const num = this.getAttribute('data-citation');
-              const citation = wrap.querySelector(`.citation-item[data-source="${num}"]`);
-              if (citation) {
-                // Remove previous highlights
-                wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-                // Highlight clicked citation
-                citation.classList.add('highlight');
-                citation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                setTimeout(() => citation.classList.remove('highlight'), 1500);
-              }
-            });
+
+        // Click-handlers
+        bubble.querySelectorAll('.citation-ref').forEach(ref => {
+          ref.addEventListener('click', function () {
+            const num = this.getAttribute('data-citation');
+            const ci = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+            if (ci) {
+              wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+              ci.classList.add('highlight');
+              ci.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              setTimeout(() => ci.classList.remove('highlight'), 1500);
+            }
           });
-          
-          // Citation item clicks (could open document in future)
-          wrap.querySelectorAll('.citation-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-              e.preventDefault();
-              const num = this.getAttribute('data-source');
-              const title = this.querySelector('.citation-title').textContent;
-              console.log(`Citation ${num} clicked: ${title}`);
-              // TODO: Open document or show more info
-            });
+        });
+        wrap.querySelectorAll('.citation-item').forEach(item => {
+          item.addEventListener('click', function (e) {
+            e.preventDefault();
+            // eventueel: open link of detail
           });
-        }, 0);
+        });
       }
-    } else {
-      // User message - simple text
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-      wrap.appendChild(bubble);
+    });
 
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      const t = document.createElement('span');
-      t.className = 'time';
-      t.textContent = timeHHMM(timeObj);
-      const tick = document.createElement('span');
-      tick.className = 'tick';
-      tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
-      meta.appendChild(t);
-      meta.appendChild(tick);
-      wrap.appendChild(meta);
-    }
+  } else {
+    // user
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
 
-    msg.appendChild(wrap);
-    chatlog.appendChild(msg);
-    chatlog.scrollTop = chatlog.scrollHeight;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const t = document.createElement('span');
+    t.className = 'time';
+    t.textContent = timeHHMM(timeObj);
+    const tick = document.createElement('span');
+    tick.className = 'tick';
+    tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    meta.appendChild(t); meta.appendChild(tick);
+    wrap.appendChild(meta);
   }
+
+  msg.appendChild(wrap);
+  chatlog.appendChild(msg);
+  chatlog.scrollTop = chatlog.scrollHeight;
+}
 
   let sending = false;
   async function sendMessage() {
