@@ -584,7 +584,16 @@
   function timeHHMM(d = new Date()){
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
-
+function typewriterEffect(bubble, finalHTML, onDone){
+  const tmp = document.createElement('div'); tmp.innerHTML = finalHTML;
+  const text = tmp.textContent || tmp.innerText || '';
+  let i = 0;
+  (function step(){
+    if(i >= text.length){ bubble.innerHTML = finalHTML; onDone && onDone(); return; }
+    bubble.textContent = text.slice(0, i += 3);
+    setTimeout(step, 16);
+  })();
+}
   // ---------- Citations Parsing ----------
 // ---------- Citations Parsing ----------
 function parseMessageWithCitations(text) {
@@ -1114,6 +1123,19 @@ function renderCitationsBlock(sources = []) {
     wrap.className = 'bubble-wrap';
 
     if (who === 'assistant') {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      wrap.appendChild(bubble);
+      
+      typewriterEffect(bubble, html, () => {
+        if (sources.length > 0) {
+          const citationsEl = document.createElement('div');
+          citationsEl.innerHTML = renderCitationsBlock(sources);
+          wrap.appendChild(citationsEl.firstElementChild);
+          // (je bestaande click-handlers hier laten)
+        }
+      });
+
       // Parse citations for assistant messages
       const { html, sources } = parseMessageWithCitations(text);
       
