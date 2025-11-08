@@ -554,83 +554,75 @@
   }
 
   // ---------- Citations Parsing ----------
-  function parseMessageWithCitations(text) {
-    // First: strip Azure markers like 
-    text = text.replace(/【\d+:\d+†source】/g, '').replace(/【\d+†source】/g, '');
+  // ---------- Citations Parsing ----------
+function parseMessageWithCitations(text) {
+  // 1) Splitsen op "Bronnen:" en bronnen parsen
+  const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
+  let mainText = text;
+  let sources = [];
 
-    // Check if message has "Bronnen:" block
-    const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
-    if (hasBronnen) {
-      const parts = text.split(/\n\s*Bronnen:\s*\n/i);
-      const mainText = parts[0].trim();
-      const sourcesText = parts[1] || '';
+  if (hasBronnen) {
+    const [rawMain, rawSources = ''] = text.split(/\n\s*Bronnen:\s*\n/i);
 
-      const sources = [];
-      const sourceLines = sourcesText.split('\n').filter(line => line.trim());
+    // Parse elke bronnenregel en negeer eventuele bestaande [n] → we hernummeren 1..N
+    const lines = rawSources.split('\n').map(s => s.trim()).filter(Boolean);
+    sources = lines.map((line, idx) => {
+      const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
+      const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
+      return {
+        number: String(idx + 1),
+        title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
+        location: parts[1] || '',
+        date: parts[2] || '',
+        url
+      };
+    });
 
-      sourceLines.forEach(line => {
-        // Try to pull out [n], title, location, date and ANY url
-        // Examples we support:
-        // [1] Auto regeling The Hup.pdf | Review-MvWpdf (1) | Datum: onbekend https://.../file.pdf
-        const numMatch = line.match(/\[(\d+)\]/);
-        const urlMatch = line.match(/https?:\/\/\S+/i);
-        const partsPipe = line.replace(/\[(\d+)\]\s*/,'').split('|').map(s => s.trim());
-        const number = numMatch ? numMatch[1] : String(sources.length + 1);
-        const title = partsPipe[0] || line.replace(/\[(\d+)\]\s*/,'').trim();
-        const location = partsPipe[1] || '';
-        const date = partsPipe[2] || '';
-        const url = urlMatch ? urlMatch[0] : '';
-
-        sources.push({ number, title, location, date, url });
-      });
-
-      // Process markdown before escaping
-      let html = mainText;
-      html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC_START|||$1|||ITALIC_END|||');
-
-      // Escape HTML
-      html = escapeHtml(html);
-
-      // Restore formatting
-      html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
-      html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-      html = html.replace(/\|\|\|ITALIC_START\|\|\|/g, '<em>');
-      html = html.replace(/\|\|\|ITALIC_END\|\|\|/g, '</em>');
-
-      // Replace [n] inline only if we actually have sources
-      html = html.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
-
-      // Bullets + paragraphs
-      html = html.replace(/^- (.+)$/gm, '• $1');
-      html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-      html = '<p>' + html + '</p>';
-      html = html.replace(/<p>\s*<\/p>/g, '');
-
-      return { html, sources };
-    } else {
-      // No formatted sources; just escape + strip any weird markers we missed
-      let html = text;
-      html = html.replace(/【[\d:†]+source】/g, '');
-
-      html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-
-      html = escapeHtml(html);
-
-      html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
-      html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-
-      html = html.replace(/^- (.+)$/gm, '• $1');
-      html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-      html = '<p>' + html + '</p>';
-      html = html.replace(/<p>\s*<\/p>/g, '');
-
-      return { html, sources: [] };
-    }
+    mainText = rawMain;
   }
 
+  // 2) Azure-markers → sequentiële [n] die naar bronnen verwijzen
+  //    Voorbeeld: "……" → "… [1] … [2]"
+  if (sources.length > 0) {
+    let markerIdx = 0;
+    mainText = mainText.replace(/【[^】]*source】/g, () => {
+      markerIdx += 1;
+      const n = Math.min(markerIdx, sources.length); // bij > markers dan bronnen: cap op laatste
+      return ` [${n}]`;
+    });
+
+    // Als er nog géén [n] in de tekst staat (geen Azure markers aanwezig),
+    // voeg dan één verwijzing naar [1] toe aan het eind, zodat er altijd een inline referentie is.
+    if (!/\[\d+\]/.test(mainText)) {
+      mainText = mainText.trimEnd() + ' [1]';
+    }
+  } else {
+    // Geen Bronnen-blok? Verwijder Azure-artefacts compleet.
+    mainText = mainText.replace(/【[^】]*source】/g, '');
+  }
+
+  // 3) Markdown → HTML (met veilige escaping) en [n] → klikbare refs
+  let html = mainText;
+  html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
+             .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
+             .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
+
+  html = escapeHtml(html)
+           .replace(/\|\|\|B\|\|\|/g, '<strong>')
+           .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
+           .replace(/\|\|\|I\|\|\|/g, '<em>')
+           .replace(/\|\|\|\/I\|\|\|/g, '</em>')
+           // maak elke [n] een klikbare verwijzing naar de Bronnen-sectie
+           .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
+           .replace(/^- (.+)$/gm, '• $1')
+           .replace(/\n\n+/g, '</p><p>')
+           .replace(/\n/g, '<br>');
+
+  html = '<p>' + html + '</p>';
+  html = html.replace(/<p>\s*<\/p>/g, '');
+
+  return { html, sources };
+}
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
