@@ -724,18 +724,15 @@ function parseMessageWithCitations(text) {
   function renderCitationsBlock(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) return "";
 
-  const items = sources.map(src => {
-    const num = src.number ?? "";
+  const items = sources.map((src, i) => {
+    const num = (src.number ?? (i + 1));
     const title = (src.title ?? "Bron");
-    const loc = (src.location ?? "");
     const linkAttr = src.link ? ` href="${src.link}" target="_blank" rel="noopener"` : "";
-    // anchor blijft ook zonder link klikbaar voor je JS handlers
     return `
       <a class="citation-item" data-source="${num}"${linkAttr}>
         <div class="citation-number">${num}</div>
         <div class="citation-content">
           <div class="citation-title">${title}</div>
-          <div class="citation-source">${loc}</div>
         </div>
         <svg class="citation-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2"
