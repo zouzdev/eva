@@ -584,149 +584,184 @@
   function timeHHMM(d = new Date()){
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
+function typewriterEffectHTML(bubble, finalHTML, cps = 80, onDone){
+  // Eind-HTML plaatsen (layout staat meteen goed)
+  bubble.innerHTML = finalHTML;
 
-  // ---------- Citations Parsing ----------
-// ---------- Citations Parsing ----------
-function parseMessageWithCitations(text) {
-  if (!text) return { html: "", sources: [] };
-
-  const escapeHTML = (s) =>
-    s.replace(/&/g, "&amp;")
-     .replace(/</g, "&lt;")
-     .replace(/>/g, "&gt;")
-     .replace(/"/g, "&quot;")
-     .replace(/'/g, "&#39;");
-
-  const citations = [];
-  const citeMap = new Map();
-
-  function inline(s) {
-    let t = escapeHTML(s);
-
-    // **bold**
-    t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-
-    // Citatie markers: 
-    t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
-      const key = `${a}:${b}`;
-      if (!citeMap.has(key)) {
-        citeMap.set(key, citeMap.size + 1);
-        citations.push(key);
+  // Dubbele badges direct naast elkaar weghalen
+  (function dedupeAdjacentRefs(container){
+    const refs = Array.from(container.querySelectorAll('.citation-ref'));
+    for (let i = 1; i < refs.length; i++){
+      const prev = refs[i].previousElementSibling;
+      if (prev && prev.classList.contains('citation-ref') &&
+          prev.textContent === refs[i].textContent) {
+        refs[i].remove();
       }
-      return `<span class="citation-ref" data-citation="${citeMap.get(key)}">${citeMap.get(key)}</span>`;
-    });
+    }
+  })(bubble);
 
+  // Alle zichtbare tekstnodes verzamelen
+  const walker = document.createTreeWalker(
+    bubble,
+    NodeFilter.SHOW_TEXT,
+    { acceptNode: n => n.nodeValue.trim().length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT }
+  );
+
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    nodes.push({ node: n, full: n.nodeValue });
+    n.nodeValue = ""; // leegmaken, we “typen” hem terug
+  }
+
+  const total = nodes.reduce((s, o) => s + o.full.length, 0);
+  if (total === 0){ onDone && onDone(); return; }
+
+  let i = 0, delay = 1000 / cps;
+
+  (function step(){
+    if (i >= total){ onDone && onDone(); return; }
+
+    // Bepaal in welke tekstnode we zitten en zet substring
+    let k = i;
+    for (const o of nodes){
+      if (k >= o.full.length){ o.node.nodeValue = o.full; k -= o.full.length; }
+      else { o.node.nodeValue = o.full.slice(0, k + 1); break; }
+    }
+    i++;
+    setTimeout(step, delay);
+  })();
+}
+// ---------- Helper: parse body + bronnen ----------
+function parseMessageWithCitations(text){
+  if(!text) return { html:"", sources:[] };
+
+  const esc = s => s.replace(/&/g,"&amp;")
+                    .replace(/</g,"&lt;")
+                    .replace(/>/g,"&gt;")
+                    .replace(/"/g,"&quot;")
+                    .replace(/'/g,"&#39;");
+
+  // Body vs Bronnen/Sources
+  const m = text.match(/(?:^|\n)\s*(Bronnen?|Sources?)\s*:\s*([\s\S]*)$/i);
+  const rawSources = m ? m[2].trim() : "";
+  const body = (m ? text.slice(0, m.index) : text).trim();
+
+  // Bronnenlijst
+  const sources = [];
+  if(rawSources){
+    const lines = rawSources.split(/\r?\n|•|;/).map(s=>s.trim()).filter(Boolean);
+    let i = 0;
+    for(const line of lines){
+      const rest = line.replace(/^\[?\d+\]?\s*/,"").trim();
+      const parts = rest.split("|").map(p=>p.trim()).filter(Boolean);
+      sources.push({ number: ++i, title: parts[0]||"Bron", meta: parts.slice(1).join(" · ") });
+    }
+  }
+  const single = sources.length === 1;
+
+  // Inline formatting + citation badges
+  function inline(s){
+    let t = esc(s);
+    t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/【(\d+):(\d+)†source】/g, () =>
+      `<span class="citation-ref" data-citation="${single?1:++inline._n}">${single?1:inline._n}</span>`
+    );
     return t;
   }
+  inline._n = 0;
 
-  const lines = text.trim().split(/\r?\n/);
+  // Paragrafen / lijsten
+  const lines = body.split(/\r?\n/);
+  let html = "", mode = null, buf = [];
+  const li = [];
 
-  let html = "";
-  let listType = null;  // "ol" | "ul"
-  let listItems = [];
-  let buffer = [];
-
-  function flushParagraph() {
-    if (buffer.length) {
-      html += `<p>${inline(buffer.join(" ").trim())}</p>`;
-      buffer = [];
+  const flushP = () => { if(buf.length){ html += `<p>${inline(buf.join(" ").trim())}</p>`; buf = []; } };
+  const flushL = () => {
+    if(mode && li.length){
+      const items = li.map(x=>`<li>${inline(x)}</li>`).join("");
+      html += (mode==="ol") ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
+      li.length = 0;
     }
-  }
-
-  function flushList() {
-    if (listType && listItems.length) {
-      const items = listItems.map(li => `<li>${inline(li.trim())}</li>`).join("");
-      html += listType === "ol" ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
-    }
-    listType = null;
-    listItems = [];
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line) {
-      flushParagraph();
-      flushList();
-      continue;
-    }
-
-    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);    // 1. item
-    const ulMatch = line.match(/^-\s+(.*)$/);          // - item
-
-    if (olMatch) {
-      flushParagraph();
-      if (listType && listType !== "ol") flushList();
-      listType = "ol";
-      listItems.push(olMatch[2]);
-    } else if (ulMatch) {
-      flushParagraph();
-      if (listType && listType !== "ul") flushList();
-      listType = "ul";
-      listItems.push(ulMatch[1]);
-    } else {
-      if (listType) flushList();
-      buffer.push(line);
-    }
-  }
-
-  flushParagraph();
-  flushList();
-
-  return {
-    html,
-    sources: citations.map((c, i) => ({
-      number: i + 1,
-      title: "Bron",
-      location: c
-    }))
+    mode = null;
   };
+
+  for(const raw of lines){
+    const line = raw.trim();
+    if(!line){ flushP(); flushL(); continue; }
+    const mOL = line.match(/^(\d+)\.\s+(.*)$/);
+    const mUL = line.match(/^-\s+(.*)$/);
+    if(mOL){ flushP(); if(mode!=="ol") flushL(); mode="ol"; li.push(mOL[2]); }
+    else if(mUL){ flushP(); if(mode!=="ul") flushL(); mode="ul"; li.push(mUL[1]); }
+    else { if(mode) flushL(); buf.push(line); }
+  }
+  flushP(); flushL();
+
+  return { html, sources };
 }
 
+// ---------- Helper: typewriter over HELE layout ----------
+function typewriterReveal(targetEl, finalHTML, cps=80, onDone){
+  // parse eind-HTML
+  const tmp = document.createElement('div');
+  tmp.innerHTML = finalHTML;
 
-function renderCitationsBlock(sources = []) {
-  if (!Array.isArray(sources) || sources.length === 0) return "";
+  // bouw een queue van nodes in volgorde (pre-order)
+  const queue = [];
+  (function collect(node){
+    for(const child of node.childNodes){
+      queue.push(child);
+      if(child.nodeType === Node.ELEMENT_NODE) collect(child);
+    }
+  })(tmp);
 
-  const items = sources
-    .map(src => {
-      const num = src.number;
-      const title = src.title ?? "Bron";
-      const loc = src.location ?? "";
+  targetEl.innerHTML = '';
+  const delay = 1000 / cps;
 
-      return `
-        <a class="citation-item" data-source="${num}">
-          <div class="citation-number">${num}</div>
-          <div class="citation-content">
-            <div class="citation-title">${title}</div>
-            <div class="citation-source">${loc}</div>
-          </div>
-          <svg class="citation-icon" viewBox="0 0 24 24">
-            <path d="M8 5l8 7-8 7"
-              stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-      `;
-    })
-    .join("");
+  // Map: source element -> target "shell"
+  const shellMap = new WeakMap();
+  shellMap.set(tmp, targetEl);
 
-  return `
-    <div class="citations">
-      <div class="citations-header">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 6v12M6 12h12"
-            stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Citations
-      </div>
-      <div class="citation-list">
-        ${items}
-      </div>
-    </div>
-  `;
-}
+  // maak/haal shell voor een bron-parent in targetEl
+  function ensureShellFor(srcParent){
+    if(shellMap.has(srcParent)) return shellMap.get(srcParent);
+    const parentShell = ensureShellFor(srcParent.parentNode);
+    const shell = srcParent.cloneNode(false); // lege tag
+    parentShell.appendChild(shell);
+    shellMap.set(srcParent, shell);
+    return shell;
+  }
 
-  // ---------- UI Functions ----------
+  let i = 0;
+  (function step(){
+    if(i >= queue.length){ onDone && onDone(); return; }
+    const src = queue[i++];
+
+    if(src.nodeType === Node.ELEMENT_NODE){
+      // maak een lege shell op de juiste plek; inhoud komt later
+      ensureShellFor(src);
+      setTimeout(step, delay);
+      return;
+    }
+
+    if(src.nodeType === Node.TEXT_NODE){
+      const parentShell = ensureShellFor(src.parentNode);
+      const tn = document.createTextNode('');
+      parentShell.appendChild(tn);
+      const full = src.nodeValue || '';
+      let j = 0;
+      (function typeChar(){
+        if(j >= full.length){ setTimeout(step, 0); return; }
+        tn.nodeValue = full.slice(0, ++j);
+        setTimeout(typeChar, delay);
+      })();
+      return;
+    }
+
+    // andere nodes: sla snel over
+    setTimeout(step, 0);
+  })();
+}  // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
     el.id = "typingIndicator";
@@ -1082,85 +1117,81 @@ function renderCitationsBlock(sources = []) {
   delConfirmBtn.addEventListener('click', confirmDeleteSession);
   delPopup.addEventListener('click', (e)=>{ if(e.target===delPopup) closeDeleteModal(); });
 
-  function addMessage(text, who = 'assistant', timeObj = new Date()) {
-    const msg = document.createElement('div');
-    msg.className = `msg ${who}`;
+  // ---------- addMessage met layout-typewriter ----------
+function addMessage(text, who = 'assistant', timeObj = new Date()) {
+  const msg = document.createElement('div');
+  msg.className = `msg ${who}`;
 
-    const wrap = document.createElement('div');
-    wrap.className = 'bubble-wrap';
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap';
 
-    if (who === 'assistant') {
-      // Parse citations for assistant messages
-      const { html, sources } = parseMessageWithCitations(text);
-      
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.innerHTML = html;
-      wrap.appendChild(bubble);
-      
-      // Add citations if present
+  if (who === 'assistant') {
+    const { html, sources } = parseMessageWithCitations(text);
+
+    // Bubble
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    wrap.appendChild(bubble);
+
+    // Typewriter over HELE DOM (opmaak blijft correct)
+    typewriterReveal(bubble, html, 80, () => {
+      // Bronnenblok NA de animatie toevoegen
       if (sources.length > 0) {
-        const citationsEl = document.createElement('div');
-        citationsEl.innerHTML = renderCitationsBlock(sources);
-        wrap.appendChild(citationsEl.firstElementChild);
-        
-        // Add click handlers after rendering
-        setTimeout(() => {
-          // Citation ref clicks
-          bubble.querySelectorAll('.citation-ref').forEach(ref => {
-            ref.addEventListener('click', function() {
-              const num = this.getAttribute('data-citation');
-              const citation = wrap.querySelector(`.citation-item[data-source="${num}"]`);
-              if (citation) {
-                // Remove previous highlights
-                wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-                // Highlight clicked citation
-                citation.classList.add('highlight');
-                citation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                setTimeout(() => citation.classList.remove('highlight'), 1500);
-              }
-            });
-          });
-          
-          // Citation item clicks (could open document in future)
-          wrap.querySelectorAll('.citation-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-              e.preventDefault();
-              const num = this.getAttribute('data-source');
-              const title = this.querySelector('.citation-title').textContent;
-              console.log(`Citation ${num} clicked: ${title}`);
-              // TODO: Open document or show more info
-            });
-          });
-        }, 0);
+        // verwijder dubbele badges direct naast elkaar (veiligheidsnet)
+        const refs = bubble.querySelectorAll('.citation-ref + .citation-ref');
+        refs.forEach(ref => {
+          if (ref.previousElementSibling?.textContent === ref.textContent) ref.remove();
+        });
+
+        const cWrap = document.createElement('div');
+        cWrap.innerHTML = renderCitationsBlock(sources);
+        wrap.appendChild(cWrap.firstElementChild);
       }
-    } else {
-      // User message - simple text
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-      wrap.appendChild(bubble);
+    });
 
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      const t = document.createElement('span');
-      t.className = 'time';
-      t.textContent = timeHHMM(timeObj);
-      const tick = document.createElement('span');
-      tick.className = 'tick';
-      tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>`;
-      meta.appendChild(t);
-      meta.appendChild(tick);
-      wrap.appendChild(meta);
-    }
+    // Delegated clicks voor citaties
+    wrap.addEventListener('click', (e)=>{
+      const ref = e.target.closest('.citation-ref');
+      if(ref){
+        const n = ref.getAttribute('data-citation');
+        const item = wrap.querySelector(`.citation-item[data-source="${n}"]`);
+        if(item){
+          wrap.querySelectorAll('.citation-item').forEach(x=>x.classList.remove('highlight'));
+          item.classList.add('highlight');
+          item.scrollIntoView({ behavior:'smooth', block:'nearest' });
+          setTimeout(()=>item.classList.remove('highlight'), 1500);
+        }
+      }
+      const ci = e.target.closest('.citation-item');
+      if (ci) e.preventDefault();
+    });
 
-    msg.appendChild(wrap);
-    chatlog.appendChild(msg);
-    chatlog.scrollTop = chatlog.scrollHeight;
+  } else {
+    // user
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const t = document.createElement('span');
+    t.className = 'time';
+    t.textContent = timeHHMM(timeObj);
+    const tick = document.createElement('span');
+    tick.className = 'tick';
+    tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    meta.appendChild(t); meta.appendChild(tick);
+    wrap.appendChild(meta);
   }
 
+  msg.appendChild(wrap);
+  chatlog.appendChild(msg);
+  chatlog.scrollTop = chatlog.scrollHeight;
+}
   let sending = false;
   async function sendMessage() {
     if (sending) return;
