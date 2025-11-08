@@ -584,96 +584,54 @@
   function timeHHMM(d = new Date()){
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
-function typewriterBuildDOM(targetEl, finalHTML, cps = 80, onDone) {
-  // Parse eind-HTML in een tijdelijke container
-  const tmp = document.createElement('div');
-  tmp.innerHTML = finalHTML;
+function typewriterEffectHTML(bubble, finalHTML, cps = 80, onDone){
+  // Eind-HTML plaatsen (layout staat meteen goed)
+  bubble.innerHTML = finalHTML;
 
-  // Depth-first queue van nodes die we 1-voor-1 gaan plaatsen
-  const queue = [];
-  (function collect(node){
-    for (const child of node.childNodes) {
-      queue.push(child);
-      // Elementen eerst en hun kinderen later: we willen structuur in volgorde laten verschijnen
-      if (child.nodeType === Node.ELEMENT_NODE) collect(child);
+  // Dubbele badges direct naast elkaar weghalen
+  (function dedupeAdjacentRefs(container){
+    const refs = Array.from(container.querySelectorAll('.citation-ref'));
+    for (let i = 1; i < refs.length; i++){
+      const prev = refs[i].previousElementSibling;
+      if (prev && prev.classList.contains('citation-ref') &&
+          prev.textContent === refs[i].textContent) {
+        refs[i].remove();
+      }
     }
-  })(tmp);
+  })(bubble);
 
-  targetEl.innerHTML = '';
-  let i = 0;
-  const delay = 1000 / cps;
+  // Alle zichtbare tekstnodes verzamelen
+  const walker = document.createTreeWalker(
+    bubble,
+    NodeFilter.SHOW_TEXT,
+    { acceptNode: n => n.nodeValue.trim().length ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT }
+  );
+
+  const nodes = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    nodes.push({ node: n, full: n.nodeValue });
+    n.nodeValue = ""; // leegmaken, we “typen” hem terug
+  }
+
+  const total = nodes.reduce((s, o) => s + o.full.length, 0);
+  if (total === 0){ onDone && onDone(); return; }
+
+  let i = 0, delay = 1000 / cps;
 
   (function step(){
-    if (i >= queue.length) { onDone && onDone(); return; }
-    const src = queue[i++];
+    if (i >= total){ onDone && onDone(); return; }
 
-    if (src.nodeType === Node.TEXT_NODE) {
-      // Tekstnodes: letter-voor-letter
-      const full = src.nodeValue || '';
-      const tn = document.createTextNode('');
-      // Plaats in de juiste parent (laatste element in targetEl’s DOM pad)
-      let parent = targetEl;
-      // Vind overeenkomstig pad voor src.parentNode
-      const path = [];
-      let p = src.parentNode;
-      while (p && p !== tmp) { path.unshift(p); p = p.parentNode; }
-      // Loop het pad af om parent in target te vinden/aan te maken (als nog niet gemaakt)
-      let cur = targetEl;
-      for (const seg of path) {
-        // Probeer laatste kind dat overeenkomt
-        const last = cur.lastElementChild;
-        if (!last || last.tagName !== seg.tagName) {
-          // Maak het element als het nog niet bestaat
-          const clone = seg.cloneNode(false); // zonder kinderen
-          cur.appendChild(clone);
-          cur = clone;
-        } else {
-          cur = last;
-        }
-      }
-      parent = cur;
-      parent.appendChild(tn);
-
-      let j = 0;
-      (function typeChar(){
-        if (j >= full.length) { step(); return; }
-        tn.nodeValue = full.slice(0, j + 1);
-        j++;
-        setTimeout(typeChar, delay);
-      })();
-
-    } else if (src.nodeType === Node.ELEMENT_NODE) {
-      // Elementen zelf (tags) verschijnen zodra we aan hun beurt zijn,
-      // de inhoud wordt later getypt door de TEXT-node tak hierboven.
-      // Vind/maak het juiste parent in targetEl zoals bij TEXT hierboven:
-      const path = [];
-      let p = src.parentNode;
-      while (p && p !== tmp) { path.unshift(p); p = p.parentNode; }
-      let cur = targetEl;
-      for (const seg of path) {
-        const last = cur.lastElementChild;
-        if (!last || last.tagName !== seg.tagName) {
-          const clone = seg.cloneNode(false);
-          cur.appendChild(clone);
-          cur = clone;
-        } else {
-          cur = last;
-        }
-      }
-      // Voeg het element-zonder-kinderen toe als het er nog niet staat
-      const last = cur.lastElementChild;
-      if (!last || last.tagName !== src.tagName) {
-        const shell = src.cloneNode(false);
-        cur.appendChild(shell);
-      }
-      setTimeout(step, delay);
-    } else {
-      // Andere node types: sla snel over
-      setTimeout(step, 0);
+    // Bepaal in welke tekstnode we zitten en zet substring
+    let k = i;
+    for (const o of nodes){
+      if (k >= o.full.length){ o.node.nodeValue = o.full; k -= o.full.length; }
+      else { o.node.nodeValue = o.full.slice(0, k + 1); break; }
     }
+    i++;
+    setTimeout(step, delay);
   })();
 }
-
 function parseMessageWithCitations(text) {
   if (!text) return { html: "", sources: [] };
 
@@ -1151,14 +1109,17 @@ function renderCitationsBlock(sources = []) {
   wrap.className = 'bubble-wrap';
 
   if (who === 'assistant') {
+    // 1) Parse body + bronnen
     const { html, sources } = parseMessageWithCitations(text);
 
+    // 2) Bubble aanmaken
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     wrap.appendChild(bubble);
 
-    // 2× zo snel typen
-    typewriterBuildDOM(bubble, html, 80, () => {
+    // 3) Typewriter over ALLE tekstnodes (opmaak blijft staan) – 80 cps
+    typewriterEffectHTML(bubble, html, 80, () => {
+      // 4) Bronnenblokje erna toevoegen
       if (sources.length > 0) {
         const citationsEl = document.createElement('div');
         citationsEl.innerHTML = renderCitationsBlock(sources);
@@ -1166,7 +1127,7 @@ function renderCitationsBlock(sources = []) {
       }
     });
 
-    // Click-handlers voor citations
+    // 5) Delegated click-handlers voor badges ↔ lijst
     wrap.addEventListener('click', (e) => {
       const ref = e.target.closest('.citation-ref');
       if (ref) {
@@ -1179,11 +1140,13 @@ function renderCitationsBlock(sources = []) {
           setTimeout(() => ci.classList.remove('highlight'), 1500);
         }
       }
+      // voorkom navigatie als een citation-item een (optionele) href heeft
       const item = e.target.closest('.citation-item');
       if (item) e.preventDefault();
     });
 
   } else {
+    // --- User bubble ---
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
     bubble.textContent = text;
@@ -1191,15 +1154,20 @@ function renderCitationsBlock(sources = []) {
 
     const meta = document.createElement('div');
     meta.className = 'meta';
+
     const t = document.createElement('span');
     t.className = 'time';
     t.textContent = timeHHMM(timeObj);
+
     const tick = document.createElement('span');
     tick.className = 'tick';
     tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round"/>
     </svg>`;
-    meta.appendChild(t); meta.appendChild(tick);
+
+    meta.appendChild(t);
+    meta.appendChild(tick);
     wrap.appendChild(meta);
   }
 
@@ -1207,7 +1175,6 @@ function renderCitationsBlock(sources = []) {
   chatlog.appendChild(msg);
   chatlog.scrollTop = chatlog.scrollHeight;
 }
-
 
   let sending = false;
   async function sendMessage() {
