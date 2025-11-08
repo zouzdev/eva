@@ -1082,39 +1082,7 @@ function renderCitationsBlock(sources = []) {
   delConfirmBtn.addEventListener('click', confirmDeleteSession);
   delPopup.addEventListener('click', (e)=>{ if(e.target===delPopup) closeDeleteModal(); });
 
-  async function typewriterWrite(element, html, speed = 12) {
-  let i = 0;
-  let temp = "";
-  const len = html.length;
-
-  return new Promise((resolve) => {
-    function tick() {
-      // Sla HTML tags in 1 keer over
-      if (html[i] === "<") {
-        const close = html.indexOf(">", i);
-        if (close !== -1) {
-          temp += html.slice(i, close + 1);
-          i = close + 1;
-        } else {
-          temp += html[i++];
-        }
-      } else {
-        temp += html[i++];
-      }
-
-      element.innerHTML = temp;
-
-      if (i < len) {
-        setTimeout(tick, speed);
-      } else {
-        resolve();
-      }
-    }
-    tick();
-  });
-}
-
-  async function addMessage(text, who = 'assistant', timeObj = new Date()) {
+  function addMessage(text, who = 'assistant', timeObj = new Date()) {
     const msg = document.createElement('div');
     msg.className = `msg ${who}`;
 
@@ -1127,11 +1095,8 @@ function renderCitationsBlock(sources = []) {
       
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
+      bubble.innerHTML = html;
       wrap.appendChild(bubble);
-
-      // TYPEWRITER TEXT
-      await typewriterWrite(bubble, html);
-
       
       // Add citations if present
       if (sources.length > 0) {
