@@ -40,12 +40,16 @@
     --user-grad-b: #6F56E6;
     --assistant-bg: #ffffff;
     --assistant-border: rgba(10,12,20,.06);
-    --assistant-shadow: 0 6px 24px rgba(14, 18, 33, 0.06);
-    --user-shadow: 0 8px 24px rgba(104, 70, 220, 0.22);
+    --assistant-shadow: rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px;
+    --user-shadow: rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px;
     --time: #a6adbd;
     --tick: #e8e8ff;
 
     --w-chat: 500;
+
+    /* Citations */
+    --citation-bg: #f8f7ff;
+    --citation-hover: #f0edff;
 
     /* 20% kleiner */
     --ui-scale: 0.8;
@@ -169,13 +173,144 @@
   .msg{ display:flex; gap:10px; align-items:flex-end; margin: 12px 0; }
   .msg.assistant{ justify-content:flex-start; }
   .msg.user{ justify-content:flex-end; }
-  .msg .bubble-wrap{ max-width: 72%; display: inline-flex; flex-direction: column; gap: 6px; }
-  .bubble{ padding: 14px 16px; border-radius: 18px; line-height: 1.55; font-weight: var(--w-chat); }
+  .msg .bubble-wrap{ max-width: 72%; display: inline-flex; flex-direction: column; gap: 8px; }
+  .bubble{ padding: 14px 16px; border-radius: 18px; line-height: 1.6; font-weight: var(--w-chat); font-size: 15px; }
   .msg.user .bubble{ background: linear-gradient(180deg, var(--user-grad-a), var(--user-grad-b)); color: #fff; border: none; box-shadow: var(--user-shadow); }
   .msg.assistant .bubble{ background: var(--assistant-bg); border: 1px solid var(--assistant-border); color: #0f1117; box-shadow: var(--assistant-shadow); }
   .meta{ font-size: 12px; color: var(--time); display:flex; align-items:center; gap:8px; padding: 0 4px 0 6px; }
   .tick{ display:inline-flex; align-items:center; gap:4px; color:#e8e8ff; }
   .tick svg{ width:14px; height:14px; display:block; }
+
+  /* Citation Numbers in Text */
+  .citation-ref {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--brand);
+    color: white;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin: 0 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+  }
+
+  .citation-ref:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+  }
+
+  /* Citations Container */
+  .citations {
+    background: var(--citation-bg);
+    border: 1px solid rgba(124, 58, 237, 0.15);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+
+  .citations-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6a6f7a;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .citations-header svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.6;
+  }
+
+  .citation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .citation-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid rgba(124, 58, 237, 0.12);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .citation-item:hover {
+    background: var(--citation-hover);
+    border-color: var(--brand);
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  }
+
+  .citation-item.highlight {
+    background: var(--citation-hover);
+    border-color: var(--brand);
+  }
+
+  .citation-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background: var(--brand);
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .citation-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .citation-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f1117;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .citation-source {
+    font-size: 12px;
+    color: #6a6f7a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .citation-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .citation-item:hover .citation-icon {
+    opacity: 0.8;
+  }
 
   .composer{
     position: fixed;
@@ -394,13 +529,9 @@
   </div>
 
 <script>
-  // ---------- CONFIG met expliciete AI Foundry waarden ----------
+  // ---------- CONFIG ----------
   const PROJECT_URL = "https://conta-mgl1a7ru-eastus2.services.ai.azure.com/api/projects/conta-mgl1a7ru-eastus2_project";
   const AGENT_ID    = "asst_x0lvuBNFbIqxiKR4lOZW1o7M";
-
-  // ⬇️ BELANGRIJK: stuur naar je Function App, niet naar SWA
-  // in productie (SWA domein) -> Function App url
-  // lokaal -> je lokale Functions host
   const API_CHAT = "https://atlas-eva-funcapp.azurewebsites.net/api/chat";
 
   // ---------- Elements ----------
@@ -409,22 +540,18 @@
   const hero = document.getElementById('hero');
   const promptInput = document.getElementById('prompt');
   const chatlog = document.getElementById('chatlog');
-
   const composer = document.getElementById('composer');
   const bar = document.getElementById('bar');
-
   const popup = document.getElementById('popup');
   const popupContent = popup.querySelector('.popup-content');
   const clearChatBtn = document.getElementById('clearChatBtn');
   const cancelBtn = document.getElementById('cancelBtn');
   const confirmClearBtn = document.getElementById('clearBtn');
-
   const delPopup = document.getElementById('delPopup');
   const delPopupContent = delPopup.querySelector('.popup-content');
   const delCancelBtn = document.getElementById('delCancelBtn');
   const delConfirmBtn = document.getElementById('delConfirmBtn');
   let pendingDeleteId = null;
-
   const sendBtn = document.getElementById('sendBtn');
 
   // Sidebar
@@ -442,7 +569,6 @@
 
   const now = () => new Date().toISOString();
   const uid = () => Math.random().toString(36).slice(2)+Date.now().toString(36);
-
   const loadSessions = () => {
     try{ return JSON.parse(localStorage.getItem(LS_SESSIONS) || '[]'); }catch(_){ return []; }
   };
@@ -459,6 +585,172 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
+  // ---------- Citations Parsing ----------
+// ---------- Citations Parsing ----------
+function parseMessageWithCitations(text) {
+  if (!text) return { html: "", sources: [] };
+
+  const escapeHTML = (s) =>
+    s.replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;")
+     .replace(/'/g, "&#39;");
+
+  // 1) Knip het "Bronnen:" / "Sources:"-gedeelte van de body-tekst
+  const m = text.match(/(?:^|\n)\s*(Bronnen?|Sources?)\s*:\s*([\s\S]*)$/i);
+  const bronnenRaw = m ? m[2].trim() : "";
+  const bodyText   = m ? text.slice(0, m.index).trim() : text.trim();
+
+  // 2) Inline formatting (bold + inline citation badges)
+  //    Let op: we voegen GEEN extra items toe aan de citations-lijst
+  //    op basis van inline markers; de lijst komt ALLEEN uit Bronnen/Sources.
+  const citeMap = new Map();   // key -> display number
+  function inline(s) {
+    let t = escapeHTML(s);
+
+    // **bold**
+    t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+    // Inline citatie-markers: 【i:j†source】 → <span class="citation-ref">n</span>
+    t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
+      const key = `${a}:${b}`;
+      if (!citeMap.has(key)) citeMap.set(key, citeMap.size + 1);
+      const n = citeMap.get(key);
+      return `<span class="citation-ref" data-citation="${n}">${n}</span>`;
+    });
+
+    return t;
+  }
+
+  // 3) Body-tekst omzetten (paragrafen en eenvoudige lijsten)
+  const lines = bodyText.split(/\r?\n/);
+  let html = "";
+  let listType = null; // "ol" | "ul"
+  let listItems = [];
+  let buffer = [];
+
+  function flushParagraph() {
+    if (buffer.length) {
+      html += `<p>${inline(buffer.join(" ").trim())}</p>`;
+      buffer = [];
+    }
+  }
+  function flushList() {
+    if (listType && listItems.length) {
+      const items = listItems.map(li => `<li>${inline(li.trim())}</li>`).join("");
+      html += listType === "ol" ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
+    }
+    listType = null;
+    listItems = [];
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) { flushParagraph(); flushList(); continue; }
+
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/); // 1. item
+    const ulMatch = line.match(/^-\s+(.*)$/);       // - item
+
+    if (olMatch) {
+      flushParagraph();
+      if (listType && listType !== "ol") flushList();
+      listType = "ol";
+      listItems.push(olMatch[2]);
+    } else if (ulMatch) {
+      flushParagraph();
+      if (listType && listType !== "ul") flushList();
+      listType = "ul";
+      listItems.push(ulMatch[1]);
+    } else {
+      if (listType) flushList();
+      buffer.push(line);
+    }
+  }
+  flushParagraph();
+  flushList();
+
+  // 4) Bronnen/Sources naar array omzetten
+  //    Inline toont straks ALLEEN de bestandsnaam (title),
+  //    het citations-blok toont title + meta.
+  const sources = [];
+  if (bronnenRaw) {
+    // Splits per regel / bullet; NIET op komma’s (dat gaf spook-entries)
+    const candidates = bronnenRaw
+      .split(/\r?\n|•|;/g)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    let idx = 0;
+    for (const cand of candidates) {
+      // Accepteer vormen zoals:
+      // [12] Auto regeling The Hup.pdf | Intern document | Onbekend
+      // Auto regeling The Hup.pdf | Intern document | Onbekend
+      const numMatch = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
+      const rest = (numMatch ? numMatch[2] : cand).trim();
+
+      const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
+
+      const title = parts[0] || "Bron";
+      const meta  = parts.slice(1).join(" · "); // voor het blokje
+
+      sources.push({
+        number: ++idx,
+        title,       // wordt inline gebruikt (alleen bestandsnaam)
+        meta         // alleen zichtbaar in citations-blok
+        // (optioneel) link: "https://…"
+      });
+    }
+  }
+
+  return { html, sources };
+}
+
+
+// ---------- Citations renderer ----------
+function renderCitationsBlock(sources = []) {
+  if (!Array.isArray(sources) || sources.length === 0) return "";
+
+  const items = sources.map(src => {
+    const n     = src.number ?? "";
+    const title = src.title ?? "Bron";
+    const meta  = src.meta  ?? "";
+    const link  = src.link  ?? "";
+
+    // anchor blijft bruikbaar voor event handlers, link is optioneel
+    const aAttrs = link ? ` href="${link}" target="_blank" rel="noopener"` : "";
+
+    return `
+      <a class="citation-item" data-source="${n}"${aAttrs}>
+        <div class="citation-number">${n}</div>
+        <div class="citation-content">
+          <div class="citation-title">${title}</div>
+          ${meta ? `<div class="citation-source">${meta}</div>` : ""}
+        </div>
+        <svg class="citation-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </a>
+    `;
+  }).join("");
+
+  return `
+    <div class="citations">
+      <div class="citations-header">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Citations
+      </div>
+      <div class="citation-list">
+        ${items}
+      </div>
+    </div>
+  `;
+}
+  // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
     el.id = "typingIndicator";
@@ -486,10 +778,6 @@
   }
 
   async function callAgent(userMessage, existingThreadId) {
-    console.log("[Eva] API_CHAT →", API_CHAT);
-    console.log("[Eva] PROJECT_URL →", PROJECT_URL);
-    console.log("[Eva] AGENT_ID    →", AGENT_ID);
-
     const res = await fetch(API_CHAT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -825,12 +1113,58 @@
     const wrap = document.createElement('div');
     wrap.className = 'bubble-wrap';
 
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = text;
-    wrap.appendChild(bubble);
+    if (who === 'assistant') {
+      // Parse citations for assistant messages
+      const { html, sources } = parseMessageWithCitations(text);
+      
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = html;
+      wrap.appendChild(bubble);
+      
+      // Add citations if present
+      if (sources.length > 0) {
+        const citationsEl = document.createElement('div');
+        citationsEl.innerHTML = renderCitationsBlock(sources);
+        wrap.appendChild(citationsEl.firstElementChild);
+        
+        // Add click handlers after rendering
+        setTimeout(() => {
+          // Citation ref clicks
+          bubble.querySelectorAll('.citation-ref').forEach(ref => {
+            ref.addEventListener('click', function() {
+              const num = this.getAttribute('data-citation');
+              const citation = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+              if (citation) {
+                // Remove previous highlights
+                wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+                // Highlight clicked citation
+                citation.classList.add('highlight');
+                citation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                setTimeout(() => citation.classList.remove('highlight'), 1500);
+              }
+            });
+          });
+          
+          // Citation item clicks (could open document in future)
+          wrap.querySelectorAll('.citation-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+              e.preventDefault();
+              const num = this.getAttribute('data-source');
+              const title = this.querySelector('.citation-title').textContent;
+              console.log(`Citation ${num} clicked: ${title}`);
+              // TODO: Open document or show more info
+            });
+          });
+        }, 0);
+      }
+    } else {
+      // User message - simple text
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
 
-    if (who === 'user') {
       const meta = document.createElement('div');
       meta.className = 'meta';
       const t = document.createElement('span');
