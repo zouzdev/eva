@@ -215,7 +215,6 @@
     transition: all 0.2s ease;
     vertical-align: middle;
   }
-
   .citation-ref:hover {
     transform: scale(1.15);
     box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
@@ -228,6 +227,8 @@
     border-radius: 12px;
     padding: 12px 14px;
   }
+  .citations.single { padding: 10px 12px; } /* compacter voor 1 bron */
+  .citations.single .citations-header{ display:none; }
 
   .citations-header {
     font-size: 12px;
@@ -240,7 +241,6 @@
     align-items: center;
     gap: 6px;
   }
-
   .citations-header svg {
     width: 14px;
     height: 14px;
@@ -253,7 +253,8 @@
     gap: 8px;
   }
 
-  .citation-item {
+  .citation-item,
+  .citation-link {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -266,18 +267,14 @@
     transition: all 0.2s ease;
     cursor: pointer;
   }
-
-  .citation-item:hover {
+  .citation-item:hover,
+  .citation-link:hover {
     background: var(--citation-hover);
     border-color: var(--brand);
     transform: translateX(3px);
     box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
   }
-
-  .citation-item.highlight {
-    background: var(--citation-hover);
-    border-color: var(--brand);
-  }
+  .citation-item.highlight { background: var(--citation-hover); border-color: var(--brand); }
 
   .citation-number {
     display: flex;
@@ -292,29 +289,9 @@
     font-weight: 700;
     flex-shrink: 0;
   }
-
-  .citation-content {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .citation-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #0f1117;
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .citation-source {
-    font-size: 12px;
-    color: #6a6f7a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+  .citation-content { flex: 1; min-width: 0; }
+  .citation-title { font-size: 14px; font-weight: 600; color: #0f1117; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .citation-source { font-size: 12px; color: #6a6f7a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .citation-icon {
     width: 16px;
@@ -323,10 +300,8 @@
     transition: opacity 0.2s ease;
     flex-shrink: 0;
   }
-
-  .citation-item:hover .citation-icon {
-    opacity: 0.8;
-  }
+  .citation-item:hover .citation-icon,
+  .citation-link:hover .citation-icon { opacity: 0.8; }
 
   .composer{
     position: fixed;
@@ -410,38 +385,15 @@
     box-shadow: var(--assistant-shadow);
     border-radius: 18px;
   }
-
-  .wave-bars {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    height: 20px;
-  }
-
-  .wave-bar {
-    width: 3px;
-    background: linear-gradient(180deg, #826FE8, #7C3AED);
-    border-radius: 2px;
-    animation: wave 1.2s infinite ease-in-out;
-  }
-
+  .wave-bars { display: flex; align-items: center; gap: 3px; height: 20px; }
+  .wave-bar { width: 3px; background: linear-gradient(180deg, #826FE8, #7C3AED); border-radius: 2px; animation: wave 1.2s infinite ease-in-out; }
   .wave-bar:nth-child(1) { animation-delay: 0s; height: 8px; }
   .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 12px; }
   .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 16px; }
   .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 12px; }
   .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 8px; }
-
-  @keyframes wave {
-    0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
-    50% { transform: scaleY(1.2); opacity: 1; }
-  }
-
-  .thinking-text {
-    font-size: 14px;
-    color: var(--brand);
-    font-weight: 600;
-    letter-spacing: 0.3px;
-  }
+  @keyframes wave { 0%, 100% { transform: scaleY(0.5); opacity: 0.6; } 50% { transform: scaleY(1.2); opacity: 1; } }
+  .thinking-text { font-size: 14px; color: var(--brand); font-weight: 600; letter-spacing: 0.3px; }
 </style>
 </head>
 
@@ -603,97 +555,79 @@
 
   // ---------- Citations Parsing ----------
   function parseMessageWithCitations(text) {
-    // Check if message has proper citation format first
+    // First: strip Azure markers like 
+    text = text.replace(/【\d+:\d+†source】/g, '').replace(/【\d+†source】/g, '');
+
+    // Check if message has "Bronnen:" block
     const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
-    
     if (hasBronnen) {
-      // Format: [1] text [2] ... \n\nBronnen:\n[1] Title | Location | Date
       const parts = text.split(/\n\s*Bronnen:\s*\n/i);
       const mainText = parts[0].trim();
       const sourcesText = parts[1] || '';
-      
-      // Parse sources - format: [1] Title | Location | Date
+
       const sources = [];
       const sourceLines = sourcesText.split('\n').filter(line => line.trim());
-      
+
       sourceLines.forEach(line => {
-        const match = line.match(/\[(\d+)\]\s*(.+?)\s*\|\s*(.+?)(?:\s*\|\s*(.+))?$/);
-        if (match) {
-          sources.push({
-            number: match[1],
-            title: match[2].trim(),
-            location: match[3].trim(),
-            date: match[4]?.trim() || ''
-          });
-        }
+        // Try to pull out [n], title, location, date and ANY url
+        // Examples we support:
+        // [1] Auto regeling The Hup.pdf | Review-MvWpdf (1) | Datum: onbekend https://.../file.pdf
+        const numMatch = line.match(/\[(\d+)\]/);
+        const urlMatch = line.match(/https?:\/\/\S+/i);
+        const partsPipe = line.replace(/\[(\d+)\]\s*/,'').split('|').map(s => s.trim());
+        const number = numMatch ? numMatch[1] : String(sources.length + 1);
+        const title = partsPipe[0] || line.replace(/\[(\d+)\]\s*/,'').trim();
+        const location = partsPipe[1] || '';
+        const date = partsPipe[2] || '';
+        const url = urlMatch ? urlMatch[0] : '';
+
+        sources.push({ number, title, location, date, url });
       });
-      
-      // Process markdown before escaping HTML
+
+      // Process markdown before escaping
       let html = mainText;
-      
-      // Convert markdown formatting BEFORE escape
-      // Bold: **text** or __text__
       html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
       html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      
-      // Italic: *text* or _text_ (but not part of bold)
       html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC_START|||$1|||ITALIC_END|||');
-      
-      // Now escape HTML
+
+      // Escape HTML
       html = escapeHtml(html);
-      
-      // Replace placeholders with actual HTML
+
+      // Restore formatting
       html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
       html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
       html = html.replace(/\|\|\|ITALIC_START\|\|\|/g, '<em>');
       html = html.replace(/\|\|\|ITALIC_END\|\|\|/g, '</em>');
-      
-      // Replace [1], [2] etc. with citation elements
+
+      // Replace [n] inline only if we actually have sources
       html = html.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
-      
-      // Convert bullet points
+
+      // Bullets + paragraphs
       html = html.replace(/^- (.+)$/gm, '• $1');
-      
-      // Convert double newlines to paragraphs, single to breaks
       html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
       html = '<p>' + html + '</p>';
-      
-      // Clean up empty paragraphs
-      html = html.replace(/<p><\/p>/g, '');
       html = html.replace(/<p>\s*<\/p>/g, '');
-      
+
       return { html, sources };
     } else {
-      // Fallback: Handle Azure AI default format 【4:0†source】
+      // No formatted sources; just escape + strip any weird markers we missed
       let html = text;
-      const sources = [];
-      
-      // Remove Azure citation markers
       html = html.replace(/【[\d:†]+source】/g, '');
-      
-      // Convert markdown formatting BEFORE escape
+
       html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD_START|||$1|||BOLD_END|||');
       html = html.replace(/__(.+?)__/g, '|||BOLD_START|||$1|||BOLD_END|||');
-      
-      // Escape HTML
+
       html = escapeHtml(html);
-      
-      // Replace placeholders
+
       html = html.replace(/\|\|\|BOLD_START\|\|\|/g, '<strong>');
       html = html.replace(/\|\|\|BOLD_END\|\|\|/g, '</strong>');
-      
-      // Convert bullet points
+
       html = html.replace(/^- (.+)$/gm, '• $1');
-      
-      // Convert newlines
       html = html.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
       html = '<p>' + html + '</p>';
-      
-      // Clean up
-      html = html.replace(/<p><\/p>/g, '');
       html = html.replace(/<p>\s*<\/p>/g, '');
-      
-      return { html, sources };
+
+      return { html, sources: [] };
     }
   }
 
@@ -705,20 +639,53 @@
 
   function renderCitationsBlock(sources) {
     if (sources.length === 0) return '';
-    
-    const citationItems = sources.map(s => `
-      <div class="citation-item" data-source="${s.number}">
-        <div class="citation-number">${s.number}</div>
-        <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title)}</div>
-          <div class="citation-source">${escapeHtml(s.location)}${s.date ? ' • ' + escapeHtml(s.date) : ''}</div>
-        </div>
-        <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-    `).join('');
-    
+
+    // If exactly one source: show a compact direct link block
+    if (sources.length === 1) {
+      const s = sources[0];
+      const safeTitle = escapeHtml(s.title || 'Bron');
+      const safeLoc = escapeHtml(s.location || '');
+      const safeDate = escapeHtml(s.date || '');
+      const meta = [safeLoc, safeDate].filter(Boolean).join(' • ');
+      const content = `
+        <div class="citations single">
+          <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
+            <div class="citation-number">1</div>
+            <div class="citation-content">
+              <div class="citation-title">${safeTitle}</div>
+              <div class="citation-source">${meta}</div>
+            </div>
+            <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>`;
+      return content;
+    }
+
+    // Multiple sources: show list with header
+    const citationItems = sources.map(s => {
+      const safeTitle = escapeHtml(s.title || 'Bron');
+      const safeLoc = escapeHtml(s.location || '');
+      const safeDate = escapeHtml(s.date || '');
+      const meta = [safeLoc, safeDate].filter(Boolean).join(' • ');
+      const wrapperStart = s.url ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
+                                 : `<div class="citation-item" data-source="${s.number}">`;
+      const wrapperEnd = s.url ? `</a>` : `</div>`;
+      return `
+        ${wrapperStart}
+          <div class="citation-number">${s.number}</div>
+          <div class="citation-content">
+            <div class="citation-title">${safeTitle}</div>
+            <div class="citation-source">${meta}</div>
+          </div>
+          <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        ${wrapperEnd}
+      `;
+    }).join('');
+
     return `
       <div class="citations">
         <div class="citations-header">
@@ -980,7 +947,6 @@
     if(!ses) return;
     setCurrentId(id);
     chatlog.innerHTML='';
-    // No animation for history messages
     (ses.messages || []).forEach(m=> addMessage(m.text, m.who, new Date(m.at), false));
     if(ses.messages?.length){ hideHero(); hideCards(); } else { showHero(); showCards(); }
     renderHistory();
@@ -1094,45 +1060,35 @@
   function addMessage(text, who = 'assistant', timeObj = new Date(), animate = false) {
     const msg = document.createElement('div');
     msg.className = `msg ${who}`;
-
     const wrap = document.createElement('div');
     wrap.className = 'bubble-wrap';
 
     if (who === 'assistant') {
-      // Parse citations for assistant messages
       const { html, sources } = parseMessageWithCitations(text);
-      
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
-      
+
       if (animate) {
-        // Typewriter effect for new messages
         bubble.innerHTML = '<span class="typing-cursor"></span>';
         wrap.appendChild(bubble);
         msg.appendChild(wrap);
         chatlog.appendChild(msg);
         chatlog.scrollTop = chatlog.scrollHeight;
-        
-        // Start typewriter animation
         typewriterEffect(bubble, html, sources, wrap);
       } else {
-        // Instant display for history
         bubble.innerHTML = html;
         wrap.appendChild(bubble);
-        
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
           citationsEl.innerHTML = renderCitationsBlock(sources);
           wrap.appendChild(citationsEl.firstElementChild);
-          attachCitationHandlers(bubble, wrap);
+          attachCitationHandlers(bubble, wrap, sources);
         }
-        
         msg.appendChild(wrap);
         chatlog.appendChild(msg);
         chatlog.scrollTop = chatlog.scrollHeight;
       }
     } else {
-      // User message - simple text
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
       bubble.textContent = text;
@@ -1151,7 +1107,7 @@
       meta.appendChild(t);
       meta.appendChild(tick);
       wrap.appendChild(meta);
-      
+
       msg.appendChild(wrap);
       chatlog.appendChild(msg);
       chatlog.scrollTop = chatlog.scrollHeight;
@@ -1159,122 +1115,62 @@
   }
 
   function typewriterEffect(bubble, html, sources, wrap) {
-    // Configuration
-    const CHARS_PER_FRAME = 3; // Higher = faster typing (3 chars at once is fast but smooth)
-    const FRAME_DELAY = 16; // ~60fps
-    
-    // Create temporary div to parse HTML properly
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    
-    // Extract text nodes in order
-    const textNodes = [];
-    const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    while (node = walker.nextNode()) {
-      if (node.textContent.trim()) {
-        textNodes.push(node);
-      }
-    }
-    
-    // Flatten to characters with their parent elements
-    const chars = [];
-    temp.childNodes.forEach(function processNode(node) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent;
-        for (let i = 0; i < text.length; i++) {
-          chars.push({
-            char: text[i],
-            parent: node.parentElement || temp,
-            isText: true
-          });
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        // Store opening tag
-        chars.push({
-          element: node.cloneNode(false),
-          isTag: true,
-          isOpening: true
-        });
-        
-        // Process children
-        node.childNodes.forEach(processNode);
-        
-        // Store closing tag
-        chars.push({
-          tagName: node.tagName,
-          isTag: true,
-          isClosing: true
-        });
-      }
-    });
-    
-    // Simpler approach: type HTML character by character
+    const CHARS_PER_FRAME = 3;
+    const FRAME_DELAY = 16;
+
     let currentIndex = 0;
     const cursor = bubble.querySelector('.typing-cursor');
-    
+
     function typeNextChunk() {
       if (currentIndex >= html.length) {
-        // Typing complete
         cursor?.remove();
         bubble.innerHTML = html;
-        
-        // Add citations
+
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
           citationsEl.innerHTML = renderCitationsBlock(sources);
           wrap.appendChild(citationsEl.firstElementChild);
-          attachCitationHandlers(bubble, wrap);
+          attachCitationHandlers(bubble, wrap, sources);
         }
-        
         chatlog.scrollTop = chatlog.scrollHeight;
         return;
       }
-      
-      // Type multiple characters at once for speed
       const endIndex = Math.min(currentIndex + CHARS_PER_FRAME, html.length);
       const chunk = html.substring(0, endIndex);
-      
-      // Update display
       bubble.innerHTML = chunk + '<span class="typing-cursor"></span>';
-      
       currentIndex = endIndex;
-      
-      // Auto-scroll
+
       if (chatlog.scrollHeight - chatlog.scrollTop - chatlog.clientHeight < 100) {
         chatlog.scrollTop = chatlog.scrollHeight;
       }
-      
-      requestAnimationFrame(() => {
-        setTimeout(typeNextChunk, FRAME_DELAY);
-      });
+      requestAnimationFrame(() => { setTimeout(typeNextChunk, FRAME_DELAY); });
     }
-    
     typeNextChunk();
   }
 
-  function attachCitationHandlers(bubble, wrap) {
-    // Citation ref clicks
+  function attachCitationHandlers(bubble, wrap, sources) {
+    // If exactly one source and it has a URL: clicking [1] opens it directly
+    if (sources.length === 1 && sources[0].url) {
+      bubble.querySelectorAll('.citation-ref').forEach(ref => {
+        ref.style.cursor = 'pointer';
+        ref.addEventListener('click', () => {
+          window.open(sources[0].url, '_blank', 'noopener');
+        });
+      });
+      return;
+    }
+
+    // Otherwise: highlight behavior + click-through if url exists
     bubble.querySelectorAll('.citation-ref').forEach(ref => {
       ref.addEventListener('click', function() {
         const num = this.getAttribute('data-citation');
-        const citation = wrap.querySelector(`.citation-item[data-source="${num}"]`);
-        if (citation) {
+        const item = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+        if (item) {
           wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-          citation.classList.add('highlight');
-          citation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          setTimeout(() => citation.classList.remove('highlight'), 1500);
+          item.classList.add('highlight');
+          item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => item.classList.remove('highlight'), 1500);
         }
-      });
-    });
-    
-    // Citation item clicks
-    wrap.querySelectorAll('.citation-item').forEach(item => {
-      item.addEventListener('click', function(e) {
-        e.preventDefault();
-        const num = this.getAttribute('data-source');
-        const title = this.querySelector('.citation-title').textContent;
-        console.log(`Citation ${num} clicked: ${title}`);
       });
     });
   }
@@ -1302,7 +1198,6 @@
       const result = await callAgent(text, current.threadId);
       hideTyping();
       const reply = String(result.replyText || 'OK');
-      // Enable typewriter animation for new messages
       addMessage(reply, 'assistant', new Date(), true);
       persistMessage(reply, 'assistant');
 
@@ -1318,7 +1213,6 @@
       hideTyping();
       const errMsg = toDisplayString(e?.message || e || 'Er ging iets mis met de verbinding.');
       const shown = '⚠️ Serverfout: ' + errMsg;
-      // No animation for error messages
       addMessage(shown, 'assistant', new Date(), false);
       persistMessage(shown, 'assistant');
     }finally{
