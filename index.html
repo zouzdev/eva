@@ -312,18 +312,6 @@
     opacity: 0.8;
   }
 
-  .typing-cursor{
-    display:inline-block;
-    width:1px;
-    height:1em;
-    background:#7C3AED;
-    margin-left:1px;
-    animation: twblink 1s steps(1) infinite;
-    vertical-align: -0.1em;
-}
-@keyframes twblink { 50% { opacity: 0; } }
-
-
   .composer{
     position: fixed;
     left: 50%;
@@ -597,9 +585,10 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
+  // ---------- Citations Parsing ----------
 // ---------- Citations Parsing ----------
 function parseMessageWithCitations(text) {
-  if (!text) return { html: "", sources: [], heading: "Citations" };
+  if (!text) return { html: "", sources: [] };
 
   const escapeHTML = (s) =>
     s.replace(/&/g, "&amp;")
@@ -608,135 +597,142 @@ function parseMessageWithCitations(text) {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
-  // 1) Body vs Bronnen/Sources
+  // 1) Knip het "Bronnen:" / "Sources:"-gedeelte van de body-tekst
   const m = text.match(/(?:^|\n)\s*(Bronnen?|Sources?)\s*:\s*([\s\S]*)$/i);
-  const heading = m ? (/^sources?/i.test(m[1]) ? "Sources" : "Citations") : "Citations";
-  const tail    = m ? (m[2] || "").trim() : "";
-  const body    = m ? text.slice(0, m.index).trim() : text.trim();
+  const bronnenRaw = m ? m[2].trim() : "";
+  const bodyText   = m ? text.slice(0, m.index).trim() : text.trim();
 
-  // 2) Parse bronnen/sources → display-nummering 1..N
-  const sources = [];
-  const origToDisplay = new Map(); // "orig n" -> display n
+  // 2) Inline formatting (bold + inline citation badges)
+  //    Let op: we voegen GEEN extra items toe aan de citations-lijst
+  //    op basis van inline markers; de lijst komt ALLEEN uit Bronnen/Sources.
+  const citeMap = new Map();   // key -> display number
+  function inline(s) {
+    let t = escapeHTML(s);
 
-  if (tail) {
-    const lines = tail.split(/\r?\n|•|;/g).map(s => s.trim()).filter(Boolean);
-    lines.forEach((line) => {
-      const mm = line.match(/^\[?(\d+)\]?\s*(.*)$/);
-      const rest = (mm ? mm[2] : line).trim();
-      const parts = rest.split("|").map(x => x.trim()).filter(Boolean);
+    // **bold**
+    t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-      const display = sources.length + 1;
-      const title = parts[0] || "Source";
-      const meta  = parts.slice(1).join(" · ");
-
-      sources.push({ number: display, title, meta });
-
-      if (mm && mm[1] && !origToDisplay.has(mm[1])) {
-        origToDisplay.set(mm[1], display);
-      }
+    // Inline citatie-markers: 【i:j†source】 → <span class="citation-ref">n</span>
+    t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
+      const key = `${a}:${b}`;
+      if (!citeMap.has(key)) citeMap.set(key, citeMap.size + 1);
+      const n = citeMap.get(key);
+      return `<span class="citation-ref" data-citation="${n}">${n}</span>`;
     });
-  }
 
-  // 3) Tokenize inline badges vóór escapen
-  const TOKEN = "__CITE_TOKEN__";
-  const tokens = [];
-  const addBadgeToken = (n) => {
-    const t = `${TOKEN}${tokens.length}__`;
-    tokens.push({ token: t, html: `<span class="citation-ref" data-citation="${n}" title="Klik voor bron">${n}</span>` });
     return t;
-  };
-
-  function inlineFormat(s) {
-    // bold / italic markeren
-    s = s.replace(/\*\*(.+?)\*\*/g, "|||BOLD_S|||$1|||BOLD_E|||");
-    s = s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "|||ITAL_S|||$1|||ITAL_E|||");
-
-    // [n] → badge ALLEEN als die n in de lijst bestaat
-    s = s.replace(/\[(\d+)\]/g, (_, n) => {
-      const disp = origToDisplay.get(n);
-      return disp ? addBadgeToken(disp) : ""; // geen bron → geen badge
-    });
-
-    // Azure-stijl: 【i:j†source】 → alleen badges maken als er GEEN bronnenblok is.
-    // (Zo voorkomen we “extra” 2’s terwijl er maar 1 bron in de lijst staat.)
-    s = s.replace(/【\d+:\d+†source】/g, "");
-
-    return s;
   }
 
-  // 4) Paragrafen + simpele lijsten
-  const lines = body.split(/\r?\n/);
+  // 3) Body-tekst omzetten (paragrafen en eenvoudige lijsten)
+  const lines = bodyText.split(/\r?\n/);
   let html = "";
-  let listType = null, listItems = [], buf = [];
+  let listType = null; // "ol" | "ul"
+  let listItems = [];
+  let buffer = [];
 
-  const flushP = () => {
-    if (!buf.length) return;
-    let t = inlineFormat(buf.join(" ").trim());
-    t = escapeHTML(t)
-      .replaceAll("|||BOLD_S|||", "<strong>")
-      .replaceAll("|||BOLD_E|||", "</strong>")
-      .replaceAll("|||ITAL_S|||", "<em>")
-      .replaceAll("|||ITAL_E|||", "</em>");
-    // tokens herstellen
-    tokens.forEach(({ token, html: frag }) => {
-      const esc = escapeHTML(token);
-      t = t.replaceAll(token, frag).replaceAll(esc, frag);
-    });
-    html += `<p>${t}</p>`;
-    buf = [];
-  };
-
-  const flushList = () => {
-    if (!listType || !listItems.length) { listType = null; listItems = []; return; }
-    const items = listItems.map(li => {
-      let t = inlineFormat(li.trim());
-      t = escapeHTML(t)
-        .replaceAll("|||BOLD_S|||", "<strong>")
-        .replaceAll("|||BOLD_E|||", "</strong>")
-        .replaceAll("|||ITAL_S|||", "<em>")
-        .replaceAll("|||ITAL_E|||", "</em>");
-      tokens.forEach(({ token, html: frag }) => {
-        const esc = escapeHTML(token);
-        t = t.replaceAll(token, frag).replaceAll(esc, frag);
-      });
-      return `<li>${t}</li>`;
-    }).join("");
-    html += listType === "ol" ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
-    listType = null; listItems = [];
-  };
-
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) { flushP(); flushList(); continue; }
-    const mOL = line.match(/^(\d+)\.\s+(.*)$/);
-    const mUL = line.match(/^-\s+(.*)$/);
-    if (mOL) { flushP(); if (listType && listType !== "ol") flushList(); listType = "ol"; listItems.push(mOL[2]); continue; }
-    if (mUL) { flushP(); if (listType && listType !== "ul") flushList(); listType = "ul"; listItems.push(mUL[1]); continue; }
-    if (listType) flushList();
-    buf.push(line);
+  function flushParagraph() {
+    if (buffer.length) {
+      html += `<p>${inline(buffer.join(" ").trim())}</p>`;
+      buffer = [];
+    }
   }
-  flushP(); flushList();
+  function flushList() {
+    if (listType && listItems.length) {
+      const items = listItems.map(li => `<li>${inline(li.trim())}</li>`).join("");
+      html += listType === "ol" ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
+    }
+    listType = null;
+    listItems = [];
+  }
 
-  return { html, sources, heading };
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) { flushParagraph(); flushList(); continue; }
+
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/); // 1. item
+    const ulMatch = line.match(/^-\s+(.*)$/);       // - item
+
+    if (olMatch) {
+      flushParagraph();
+      if (listType && listType !== "ol") flushList();
+      listType = "ol";
+      listItems.push(olMatch[2]);
+    } else if (ulMatch) {
+      flushParagraph();
+      if (listType && listType !== "ul") flushList();
+      listType = "ul";
+      listItems.push(ulMatch[1]);
+    } else {
+      if (listType) flushList();
+      buffer.push(line);
+    }
+  }
+  flushParagraph();
+  flushList();
+
+  // 4) Bronnen/Sources naar array omzetten
+  //    Inline toont straks ALLEEN de bestandsnaam (title),
+  //    het citations-blok toont title + meta.
+  const sources = [];
+  if (bronnenRaw) {
+    // Splits per regel / bullet; NIET op komma’s (dat gaf spook-entries)
+    const candidates = bronnenRaw
+      .split(/\r?\n|•|;/g)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    let idx = 0;
+    for (const cand of candidates) {
+      // Accepteer vormen zoals:
+      // [12] Auto regeling The Hup.pdf | Intern document | Onbekend
+      // Auto regeling The Hup.pdf | Intern document | Onbekend
+      const numMatch = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
+      const rest = (numMatch ? numMatch[2] : cand).trim();
+
+      const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
+
+      const title = parts[0] || "Bron";
+      const meta  = parts.slice(1).join(" · "); // voor het blokje
+
+      sources.push({
+        number: ++idx,
+        title,       // wordt inline gebruikt (alleen bestandsnaam)
+        meta         // alleen zichtbaar in citations-blok
+        // (optioneel) link: "https://…"
+      });
+    }
+  }
+
+  return { html, sources };
 }
 
+
 // ---------- Citations renderer ----------
-function renderCitationsBlock(sources = [], heading = "Citations") {
+function renderCitationsBlock(sources = []) {
   if (!Array.isArray(sources) || sources.length === 0) return "";
-  const items = sources.map(({ number, title, meta, link }) => {
+
+  const items = sources.map(src => {
+    const n     = src.number ?? "";
+    const title = src.title ?? "Bron";
+    const meta  = src.meta  ?? "";
+    const link  = src.link  ?? "";
+
+    // anchor blijft bruikbaar voor event handlers, link is optioneel
     const aAttrs = link ? ` href="${link}" target="_blank" rel="noopener"` : "";
+
     return `
-      <a class="citation-item" data-source="${number}"${aAttrs}>
-        <div class="citation-number">${number}</div>
+      <a class="citation-item" data-source="${n}"${aAttrs}>
+        <div class="citation-number">${n}</div>
         <div class="citation-content">
-          <div class="citation-title">${title || "Source"}</div>
+          <div class="citation-title">${title}</div>
           ${meta ? `<div class="citation-source">${meta}</div>` : ""}
         </div>
         <svg class="citation-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-      </a>`;
+      </a>
+    `;
   }).join("");
 
   return `
@@ -746,12 +742,13 @@ function renderCitationsBlock(sources = [], heading = "Citations") {
           <path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        ${heading}
+        Citations
       </div>
       <div class="citation-list">
         ${items}
       </div>
-    </div>`;
+    </div>
+  `;
 }
   // ---------- UI Functions ----------
   function showTyping() {
@@ -1108,101 +1105,85 @@ function renderCitationsBlock(sources = [], heading = "Citations") {
   delCancelBtn.addEventListener('click', closeDeleteModal);
   delConfirmBtn.addEventListener('click', confirmDeleteSession);
   delPopup.addEventListener('click', (e)=>{ if(e.target===delPopup) closeDeleteModal(); });
-function typewriterEffect(bubble, finalHTML, onDone) {
-  // Maak platte tekst zonder HTML, zodat we veilig kunnen 'typen'
-  const tmp = document.createElement('div');
-  tmp.innerHTML = finalHTML;
-  const textOnly = tmp.textContent || tmp.innerText || '';
 
-  const FPS_DELAY = 16;      // ~60fps
-  const CHARS_PER_TICK = 3;  // snelheid
+  function addMessage(text, who = 'assistant', timeObj = new Date()) {
+    const msg = document.createElement('div');
+    msg.className = `msg ${who}`;
 
-  let i = 0;
-  const step = () => {
-    if (i >= textOnly.length) {
-      // Klaar met typen → render de echte HTML met badges/links
-      bubble.innerHTML = finalHTML;
-      if (typeof onDone === 'function') onDone();
-      return;
+    const wrap = document.createElement('div');
+    wrap.className = 'bubble-wrap';
+
+    if (who === 'assistant') {
+      // Parse citations for assistant messages
+      const { html, sources } = parseMessageWithCitations(text);
+      
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = html;
+      wrap.appendChild(bubble);
+      
+      // Add citations if present
+      if (sources.length > 0) {
+        const citationsEl = document.createElement('div');
+        citationsEl.innerHTML = renderCitationsBlock(sources);
+        wrap.appendChild(citationsEl.firstElementChild);
+        
+        // Add click handlers after rendering
+        setTimeout(() => {
+          // Citation ref clicks
+          bubble.querySelectorAll('.citation-ref').forEach(ref => {
+            ref.addEventListener('click', function() {
+              const num = this.getAttribute('data-citation');
+              const citation = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+              if (citation) {
+                // Remove previous highlights
+                wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+                // Highlight clicked citation
+                citation.classList.add('highlight');
+                citation.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                setTimeout(() => citation.classList.remove('highlight'), 1500);
+              }
+            });
+          });
+          
+          // Citation item clicks (could open document in future)
+          wrap.querySelectorAll('.citation-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+              e.preventDefault();
+              const num = this.getAttribute('data-source');
+              const title = this.querySelector('.citation-title').textContent;
+              console.log(`Citation ${num} clicked: ${title}`);
+              // TODO: Open document or show more info
+            });
+          });
+        }, 0);
+      }
+    } else {
+      // User message - simple text
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const t = document.createElement('span');
+      t.className = 'time';
+      t.textContent = timeHHMM(timeObj);
+      const tick = document.createElement('span');
+      tick.className = 'tick';
+      tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+      meta.appendChild(t);
+      meta.appendChild(tick);
+      wrap.appendChild(meta);
     }
-    i = Math.min(i + CHARS_PER_TICK, textOnly.length);
-    bubble.textContent = textOnly.slice(0, i);
-    bubble.insertAdjacentHTML('beforeend', '<span class="typing-cursor"></span>');
 
-    // scroll bijhouden als je onderaan bent
-    if (chatlog.scrollHeight - chatlog.scrollTop - chatlog.clientHeight < 120) {
-      chatlog.scrollTop = chatlog.scrollHeight;
-    }
-    setTimeout(step, FPS_DELAY);
-  };
-  step();
-}
- function addMessage(text, who = 'assistant', timeObj = new Date()) {
-  const msg  = document.createElement('div');
-  msg.className = `msg ${who}`;
-
-  const wrap = document.createElement('div');
-  wrap.className = 'bubble-wrap';
-
-  if (who === 'assistant') {
-    const { html, sources, heading } = parseMessageWithCitations(text);
-
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.innerHTML = '<span class="typing-cursor"></span>';
-    wrap.appendChild(bubble);
     msg.appendChild(wrap);
     chatlog.appendChild(msg);
     chatlog.scrollTop = chatlog.scrollHeight;
-
-    // → start typewriter en voeg daarna het bronnenblok toe
-    typewriterEffect(bubble, html, () => {
-      if (sources.length > 0) {
-        const holder = document.createElement('div');
-        holder.innerHTML = renderCitationsBlock(sources, heading);
-        wrap.appendChild(holder.firstElementChild);
-
-        bubble.querySelectorAll('.citation-ref').forEach(ref => {
-          ref.addEventListener('click', function () {
-            const num = this.getAttribute('data-citation');
-            const ci = wrap.querySelector(`.citation-item[data-source="${num}"]`);
-            if (ci) {
-              wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-              ci.classList.add('highlight');
-              ci.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              setTimeout(() => ci.classList.remove('highlight'), 1200);
-            }
-          });
-        });
-      }
-      chatlog.scrollTop = chatlog.scrollHeight;
-    });
-  } else {
-  const bubble = document.createElement('div');
-  bubble.className = 'bubble';
-  bubble.textContent = text;
-  wrap.appendChild(bubble);
-
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  const t = document.createElement('span');
-  t.className = 'time';
-  t.textContent = timeHHMM(timeObj);
-  const tick = document.createElement('span');
-  tick.className = 'tick';
-  tick.innerHTML = `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-  meta.appendChild(t);
-  meta.appendChild(tick);
-  wrap.appendChild(meta);
-
-  // ⇩ deze drie regels toevoegen
-  msg.appendChild(wrap);
-  chatlog.appendChild(msg);
-  chatlog.scrollTop = chatlog.scrollHeight;
-}
-}
+  }
 
   let sending = false;
   async function sendMessage() {
