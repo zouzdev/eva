@@ -585,17 +585,22 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 function typewriterEffect(bubble, finalHTML, onDone){
-  const tmp = document.createElement('div'); tmp.innerHTML = finalHTML;
+  const tmp = document.createElement('div'); 
+  tmp.innerHTML = finalHTML;
   const text = tmp.textContent || tmp.innerText || '';
   let i = 0;
+
   (function step(){
-    if(i >= text.length){ bubble.innerHTML = finalHTML; onDone && onDone(); return; }
-    bubble.textContent = text.slice(0, i += 3);
-    setTimeout(step, 16);
+    if (i >= text.length){
+      bubble.innerHTML = finalHTML;       // pas aan het eind HTML tonen
+      onDone && onDone();
+      return;
+    }
+    bubble.textContent = text.slice(0, ++i); // 1 char per tick
+    setTimeout(step, 24);                    // ~40 cps (langzamer)
   })();
 }
-  // ---------- Citations Parsing ----------
-// ---------- Citations Parsing ----------
+  
 function parseMessageWithCitations(text) {
   if (!text) return { html: "", sources: [] };
 
@@ -606,23 +611,39 @@ function parseMessageWithCitations(text) {
      .replace(/"/g, "&quot;")
      .replace(/'/g, "&#39;");
 
-  // 1) Knip het "Bronnen:" / "Sources:"-gedeelte van de body-tekst
+  // Snij body vs bronnen
   const m = text.match(/(?:^|\n)\s*(Bronnen?|Sources?)\s*:\s*([\s\S]*)$/i);
   const bronnenRaw = m ? m[2].trim() : "";
   const bodyText   = m ? text.slice(0, m.index).trim() : text.trim();
 
-  // 2) Inline formatting (bold + inline citation badges)
-  //    Let op: we voegen GEEN extra items toe aan de citations-lijst
-  //    op basis van inline markers; de lijst komt ALLEEN uit Bronnen/Sources.
-  const citeMap = new Map();   // key -> display number
+  // 1) Eerst bronnenlijst bouwen
+  const sources = [];
+  if (bronnenRaw) {
+    const candidates = bronnenRaw
+      .split(/\r?\n|•|;/g)
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    let idx = 0;
+    for (const cand of candidates) {
+      const numMatch = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
+      const rest = (numMatch ? numMatch[2] : cand).trim();
+      const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
+      const title = parts[0] || "Bron";
+      const meta  = parts.slice(1).join(" · ");
+      sources.push({ number: ++idx, title, meta });
+    }
+  }
+  const singleSource = sources.length === 1;
+
+  // 2) Body parsen + inline formatting/citatie-badges
+  const citeMap = new Map(); // voor >1 bron
   function inline(s) {
     let t = escapeHTML(s);
-
-    // **bold**
     t = t.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-    // Inline citatie-markers: 【i:j†source】 → <span class="citation-ref">n</span>
     t = t.replace(/【(\d+):(\d+)†source】/g, (_, a, b) => {
+      if (singleSource) return `<span class="citation-ref" data-citation="1">1</span>`;
       const key = `${a}:${b}`;
       if (!citeMap.has(key)) citeMap.set(key, citeMap.size + 1);
       const n = citeMap.get(key);
@@ -632,89 +653,33 @@ function parseMessageWithCitations(text) {
     return t;
   }
 
-  // 3) Body-tekst omzetten (paragrafen en eenvoudige lijsten)
   const lines = bodyText.split(/\r?\n/);
-  let html = "";
-  let listType = null; // "ol" | "ul"
-  let listItems = [];
-  let buffer = [];
+  let html = "", listType = null, listItems = [], buffer = [];
 
   function flushParagraph() {
-    if (buffer.length) {
-      html += `<p>${inline(buffer.join(" ").trim())}</p>`;
-      buffer = [];
-    }
+    if (buffer.length) { html += `<p>${inline(buffer.join(" ").trim())}</p>`; buffer = []; }
   }
   function flushList() {
     if (listType && listItems.length) {
       const items = listItems.map(li => `<li>${inline(li.trim())}</li>`).join("");
       html += listType === "ol" ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
     }
-    listType = null;
-    listItems = [];
+    listType = null; listItems = [];
   }
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) { flushParagraph(); flushList(); continue; }
-
-    const olMatch = line.match(/^(\d+)\.\s+(.*)$/); // 1. item
-    const ulMatch = line.match(/^-\s+(.*)$/);       // - item
-
-    if (olMatch) {
-      flushParagraph();
-      if (listType && listType !== "ol") flushList();
-      listType = "ol";
-      listItems.push(olMatch[2]);
-    } else if (ulMatch) {
-      flushParagraph();
-      if (listType && listType !== "ul") flushList();
-      listType = "ul";
-      listItems.push(ulMatch[1]);
-    } else {
-      if (listType) flushList();
-      buffer.push(line);
-    }
+    const olMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    const ulMatch = line.match(/^-+\s+(.*)$/);
+    if (olMatch) { flushParagraph(); if (listType && listType !== "ol") flushList(); listType = "ol"; listItems.push(olMatch[2]); }
+    else if (ulMatch) { flushParagraph(); if (listType && listType !== "ul") flushList(); listType = "ul"; listItems.push(ulMatch[1]); }
+    else { if (listType) flushList(); buffer.push(line); }
   }
-  flushParagraph();
-  flushList();
-
-  // 4) Bronnen/Sources naar array omzetten
-  //    Inline toont straks ALLEEN de bestandsnaam (title),
-  //    het citations-blok toont title + meta.
-  const sources = [];
-  if (bronnenRaw) {
-    // Splits per regel / bullet; NIET op komma’s (dat gaf spook-entries)
-    const candidates = bronnenRaw
-      .split(/\r?\n|•|;/g)
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    let idx = 0;
-    for (const cand of candidates) {
-      // Accepteer vormen zoals:
-      // [12] Auto regeling The Hup.pdf | Intern document | Onbekend
-      // Auto regeling The Hup.pdf | Intern document | Onbekend
-      const numMatch = cand.match(/^\[?(\d+)\]?\s*(.*)$/);
-      const rest = (numMatch ? numMatch[2] : cand).trim();
-
-      const parts = rest.split("|").map(p => p.trim()).filter(Boolean);
-
-      const title = parts[0] || "Bron";
-      const meta  = parts.slice(1).join(" · "); // voor het blokje
-
-      sources.push({
-        number: ++idx,
-        title,       // wordt inline gebruikt (alleen bestandsnaam)
-        meta         // alleen zichtbaar in citations-blok
-        // (optioneel) link: "https://…"
-      });
-    }
-  }
+  flushParagraph(); flushList();
 
   return { html, sources };
 }
-
 
 // ---------- Citations renderer ----------
 function renderCitationsBlock(sources = []) {
