@@ -611,31 +611,58 @@
 
   // ---------- Citations Parsing ----------
   function parseMessageWithCitations(text) {
-  // Zoek naar "Bronnen:" of "Sources:"
-  const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
+  // 1) Tolerante heading: begin van regel, optionele spaties, "Bronnen" of "Sources",
+  // optionele dubbele punt, optionele spaties en dan einde regel (LF/CRLF beide).
+  const headingRe = /(^|\r?\n)\s*(Bronnen|Sources)\s*:?\s*(?:\r?\n|$)/i;
   const m = text.match(headingRe);
 
   let mainText = text;
   let sourcesText = '';
-  let headerLabel = 'Bronnen'; // default NL
+  let headerLabel = 'Bronnen';
   let sources = [];
 
   if (m) {
-    const idx = text.search(headingRe);
+    const idx = m.index + (m[1] ? m[1].length : 0); // corrigeer voor mogelijke leading newline-capture
     mainText = text.slice(0, idx).trimEnd();
-    sourcesText = text.slice(idx + m[0].length);
-    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1); // behoud taal
+    sourcesText = text.slice(idx + (m[0].length - (m[1] ? m[1].length : 0)));
+    headerLabel = m[2].charAt(0).toUpperCase() + m[2].slice(1);
   }
 
-  // Als we bronnen hebben, parse ze
+  // 2) Als we nog geen sourcesText hebben, probeer een fallback:
+  //    pak de laatste 12 regels en kijk of daar regels met [n] staan.
+  if (!sourcesText) {
+    const lines = text.split(/\r?\n/);
+    const tail = lines.slice(-12);
+    const footnoteLines = tail.filter(l => /^\s*\[\d+\]\s+/.test(l));
+    if (footnoteLines.length) {
+      // haal die voetnoten weg uit mainText
+      const cutIndex = text.lastIndexOf(footnoteLines[0]);
+      if (cutIndex > -1) mainText = text.slice(0, cutIndex).trimEnd();
+      sourcesText = footnoteLines.join('\n');
+      // label afleiden op taal van de tekst (heel simpel)
+      headerLabel = /[أ-ي]|[اأإآ]/.test(text) ? 'المصادر' : /Sources/i.test(text) ? 'Sources' : 'Bronnen';
+    }
+  }
+
+  // 3) Parseregels naar objecten
   if (sourcesText) {
-    const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
+    const lines = sourcesText
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
+
     sources = lines.map((line, i) => {
-      const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
-      const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
+      // URL correct pakken uit match()[0]
+      const urlMatch = line.match(/https?:\/\/\S+/i);
+      const url = urlMatch ? urlMatch[0] : '';
+
+      // Titel | locatie | datum (allemaal optioneel)
+      const cleaned = line.replace(/^\[\d+\]\s*/, '');
+      const parts = cleaned.split('|').map(s => s.trim());
+
       return {
         number: String(i + 1),
-        title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
+        title: parts[0] || cleaned,
         location: parts[1] || '',
         date: parts[2] || '',
         url
@@ -643,23 +670,25 @@
     });
   }
 
-  // Azure markers → [n] verwijzingen (altijd inline maken als er bronnen zijn)
+  // 4) Azure-achtige markers naar [n] als er bronnen zijn
   if (sources.length > 0) {
     let markerIdx = 0;
-    mainText = mainText.replace(/【[^】]*source】/g, () => {
+    mainText = mainText.replace(/【[^】]*source】/gi, () => {
       markerIdx += 1;
       const n = Math.min(markerIdx, sources.length);
       return ` [${n}]`;
     });
+
+    // Als er nog geen [n] in de tekst staat, forceer [1] op het einde
     if (!/\[\d+\]/.test(mainText)) {
       mainText = mainText.trimEnd() + ' [1]';
     }
   } else {
-    // Geen bronnenblok: strip Azure artefacts
-    mainText = mainText.replace(/【[^】]*source】/g, '');
+    // Geen bronnenblok → strip Azure artefacts
+    mainText = mainText.replace(/【[^】]*source】/gi, '');
   }
 
-  // Markdown → HTML en [n] klikbaar
+  // 5) Markdown light → HTML + klikbare [n]
   let html = mainText;
   html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
              .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
@@ -680,7 +709,6 @@
 
   return { html, sources, headerLabel };
 }
-
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
