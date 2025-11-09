@@ -1017,53 +1017,21 @@ function parseMessageWithCitations(text) {
 
   // Lange prompts per kaart
 const LONG_PROMPTS = {
-  timeoff: `### Time-off request
-I need a clear, step-by-step answer for:
-- Country & legal basis
-- Who approves and typical SLA (days)
-- How to request (system/URL)
-- Accrual rule, carry-over, expiry
-- Special cases (sick during PTO, public holidays)
-- Examples with dates
-**Sources:**
-- [1] Intranet policy https://...`,
+  timeoff: `How do I request time off and what is the approval timeline?`,
 
-  payslip: `### Payslip & Salary
-Explain portal path/URL, payday window, common issues & fixes, contact details.
-Include a short checklist.
-**Sources:**
-- [1] Payroll Handbook https://...`,
+  payslip: `Where can I find my payslip and when is payday?`,
 
-  expenses: `### Expense Claim
-Tool path, allowed categories & limits, receipt rules, mileage example, approval SLA.
-Add a 5-step submission guide.
-**Sources:**
-- [1] Expense Policy https://...`,
+  expenses: `How do I submit an expense claim and which receipts are required?`,
 
-  reset: `### Password Reset
-Self-service steps + MFA recovery, escalation flow, security dos/don'ts, decision tree.
-**Sources:**
-- [1] IT Support KB https://...`,
+  reset: `How do I reset my password and regain access to email?`,
 
-  sickleave: `### Sick Leave
-Notify who/by when, availability rules, fit note, pay, return-to-work timeline.
-**Sources:**
-- [1] Health & Safety https://...`,
+  sickleave: `How do I report sick and what are the availability rules?`,
 
-  travel: `### Travel Reimbursement
-Mileage rate + worked example, PT rules, deadlines, approvals, checklist.
-**Sources:**
-- [1] Travel Policy https://...`,
+  travel: `How does travel reimbursement work and what is the mileage rate?`,
 
-  policies: `### Policies & GDPR
-Where to find handbook/privacy policy, key GDPR do's/don'ts, breach reporting, DPA.
-**Sources:**
-- [1] Privacy/Legal https://...`,
+  policies: `Where can I find the employee handbook / data privacy policy (GDPR)?`,
 
-  parental: `### Parental / Maternity Leave
-Eligibility, notice period, documents, pay rules, milestone timeline, checklist.
-**Sources:**
-- [1] Leave Policy https://...`
+  parental: `How do I request parental or maternity leave and what are the timelines?`
 };
 
 // Prefill helper (optioneel autoSend)
