@@ -318,14 +318,6 @@
     border-color: var(--brand);
   }
 
-  .citation-number {
-    min-width: 18px;
-    height: 18px;
-    padding: 0 4px;
-    font-size: 11px;
-    border-radius: 4px;
-  }
-
   .citation-content {
     flex: 1;
     min-width: 0;
@@ -731,27 +723,24 @@ function parseMessageWithCitations(text) {
   if (!sources || sources.length === 0) return '';
 
   const items = sources.map(s => {
-    const wrapperStart = s.url
+    const open  = s.url
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
-
-    const wrapperEnd = s.url ? `</a>` : `</div>`;
+    const close = s.url ? `</a>` : `</div>`;
 
     return `
-      ${wrapperStart}
-        <div class="citation-number">${s.number}</div>
+      ${open}
+        <span class="citation-ref" data-citation="${s.number}" title="Klik voor bron">${s.number}</span>
         <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title || 'Bron')}</div>
+          <div class="citation-title">${escapeHtml(s.title || ('Bron ' + s.number))}</div>
         </div>
-      ${wrapperEnd}
+      ${close}
     `;
   }).join('');
 
   return `
     <div class="citations">
-      <div class="citations-header">
-        ${escapeHtml(headerLabel)}:
-      </div>
+      <div class="citations-header">${escapeHtml(headerLabel)}:</div>
       <div class="citation-list">
         ${items}
       </div>
