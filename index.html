@@ -681,11 +681,17 @@ function parseMessageWithCitations(text) {
 
   // Markdown → HTML
   let html = cleanText
+    .replace(/^### (.+)$/gm, '|||H3|||$1|||/H3|||')
+    .replace(/^## (.+)$/gm,  '|||H2|||$1|||/H2|||')
+    .replace(/^# (.+)$/gm,   '|||H1|||$1|||/H1|||')
     .replace(/\*\*(.+?)\*\*/g, '|||BOLD|||$1|||/BOLD|||')
     .replace(/__(.+?)__/g, '|||BOLD|||$1|||/BOLD|||')
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC|||$1|||/ITALIC|||');
 
   html = escapeHtml(html)
+    .replace(/\|\|\|H1\|\|\|/g, '<h1>').replace(/\|\|\|\/H1\|\|\|/g, '</h1>')
+    .replace(/\|\|\|H2\|\|\|/g, '<h2>').replace(/\|\|\|\/H2\|\|\|/g, '</h2>')
+    .replace(/\|\|\|H3\|\|\|/g, '<h3>').replace(/\|\|\|\/H3\|\|\|/g, '</h3>')
     .replace(/\|\|\|BOLD\|\|\|/g, '<strong>')
     .replace(/\|\|\|\/BOLD\|\|\|/g, '</strong>')
     .replace(/\|\|\|ITALIC\|\|\|/g, '<em>')
@@ -696,6 +702,12 @@ function parseMessageWithCitations(text) {
     .replace(/\n/g, '<br>');
 
   html = '<p>' + html + '</p>';
+  // Haal <p> rondom headings weg en verwijder lege paragrafen
+  html = html
+  .replace(/<p>\s*(<(?:h1|h2|h3)\b[^>]*>)/g, '$1')
+  .replace(/(<\/(?:h1|h2|h3)>)\s*<\/p>/g, '$1')
+  .replace(/<p>\s*<\/p>/g, '');
+
   html = html.replace(/<p>\s*<\/p>/g, '');
 
   return { html, sources, headerLabel };
