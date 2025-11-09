@@ -512,14 +512,14 @@
         </section>
 
         <section class="cards" id="cards">
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Request Time Off</h3><p>Process, approvals, and lead times.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Payslip & Salary</h3><p>Portal access, payday, and common issues.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Expenses</h3><p>Step-by-step submission and processing times.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>IT: Password Reset</h3><p>Self-service reset or via the service desk.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Sick Leave</h3><p>Who to notify, by what time, and next steps.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Travel Costs</h3><p>Public transport, mileage, and claiming.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Policies & GDPR</h3><p>Handbook, remote work policy, and security.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Parental Leave</h3><p>Notice periods and required documents.</p></article>
+          <article class="card" data-key="timeoff"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Request Time Off</h3><p>Process, approvals, and lead times.</p></article>
+          <article class="card" data-key="payslip"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Payslip & Salary</h3><p>Portal access, payday, and common issues.</p></article>
+          <article class="card" data-key="expenses"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Expenses</h3><p>Step-by-step submission and processing times.</p></article>
+          <article class="card" data-key="reset"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>IT: Password Reset</h3><p>Self-service reset or via the service desk.</p></article>
+          <article class="card" data-key="sickleave"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Sick Leave</h3><p>Who to notify, by what time, and next steps.</p></article>
+          <article class="card" data-key="travel"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Travel Costs</h3><p>Public transport, mileage, and claiming.</p></article>
+          <article class="card" data-key="policies"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Policies & GDPR</h3><p>Handbook, remote work policy, and security.</p></article>
+          <article class="card" data-key="parental"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Parental Leave</h3><p>Notice periods and required documents.</p></article>
         </section>
 
         <div class="chatlog" id="chatlog" aria-live="polite"></div>
@@ -1015,17 +1015,87 @@ function parseMessageWithCitations(text) {
     renderHistory();
   }
 
-  cards.forEach(card => {
-    card.addEventListener('click', () => {
-      const prompt =
-        card.getAttribute('data-prompt') ||
-        (card.querySelector('h3')?.textContent?.trim() || '');
-      promptInput.value = prompt;
-      const len = prompt.length;
-      promptInput.focus();
-      promptInput.setSelectionRange(len, len);
-    });
+  // Lange prompts per kaart
+const LONG_PROMPTS = {
+  timeoff: `### Time-off request
+I need a clear, step-by-step answer for:
+- Country & legal basis
+- Who approves and typical SLA (days)
+- How to request (system/URL)
+- Accrual rule, carry-over, expiry
+- Special cases (sick during PTO, public holidays)
+- Examples with dates
+**Sources:**
+- [1] Intranet policy https://...`,
+
+  payslip: `### Payslip & Salary
+Explain portal path/URL, payday window, common issues & fixes, contact details.
+Include a short checklist.
+**Sources:**
+- [1] Payroll Handbook https://...`,
+
+  expenses: `### Expense Claim
+Tool path, allowed categories & limits, receipt rules, mileage example, approval SLA.
+Add a 5-step submission guide.
+**Sources:**
+- [1] Expense Policy https://...`,
+
+  reset: `### Password Reset
+Self-service steps + MFA recovery, escalation flow, security dos/don'ts, decision tree.
+**Sources:**
+- [1] IT Support KB https://...`,
+
+  sickleave: `### Sick Leave
+Notify who/by when, availability rules, fit note, pay, return-to-work timeline.
+**Sources:**
+- [1] Health & Safety https://...`,
+
+  travel: `### Travel Reimbursement
+Mileage rate + worked example, PT rules, deadlines, approvals, checklist.
+**Sources:**
+- [1] Travel Policy https://...`,
+
+  policies: `### Policies & GDPR
+Where to find handbook/privacy policy, key GDPR do's/don'ts, breach reporting, DPA.
+**Sources:**
+- [1] Privacy/Legal https://...`,
+
+  parental: `### Parental / Maternity Leave
+Eligibility, notice period, documents, pay rules, milestone timeline, checklist.
+**Sources:**
+- [1] Leave Policy https://...`
+};
+
+// Prefill helper (optioneel autoSend)
+function prefillFromCard(card, { autoSend = false } = {}) {
+  const key = card.getAttribute('data-key');
+  const prompt =
+    card.getAttribute('data-prompt') ||     // HTML override
+    (key ? LONG_PROMPTS[key] : '') ||       // bibliotheek
+    (card.querySelector('h3')?.textContent?.trim() || '');
+
+  promptInput.value = prompt;
+  const len = prompt.length;
+  promptInput.focus();
+  promptInput.setSelectionRange(len, len);
+
+  if (autoSend && prompt.trim() && typeof sendMessage === 'function') {
+    sendMessage();
+  }
+}
+
+cards.forEach(card => {
+  card.addEventListener('click', () => {
+    const prompt =
+      card.getAttribute('data-prompt') ||
+      (card.querySelector('h3')?.textContent?.trim() || '');
+    promptInput.value = prompt;
+    const len = prompt.length;
+    promptInput.focus();
+    promptInput.setSelectionRange(len, len);
   });
+});
+
 
   // Modal clear
   let lastFocusedEl = null;
