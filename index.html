@@ -602,54 +602,56 @@
   }
 
   // ---------- Citations Parsing ----------
-  // ---------- Citations Parsing ----------
-function parseMessageWithCitations(text) {
-  // 1) Splitsen op "Bronnen:" en bronnen parsen
-  const hasBronnen = /\n\s*Bronnen:\s*\n/i.test(text);
+  function parseMessageWithCitations(text) {
+  // Zoek naar "Bronnen:" of "Sources:"
+  const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
+  const m = text.match(headingRe);
+
   let mainText = text;
+  let sourcesText = '';
+  let headerLabel = 'Bronnen'; // default NL
   let sources = [];
 
-  if (hasBronnen) {
-    const [rawMain, rawSources = ''] = text.split(/\n\s*Bronnen:\s*\n/i);
+  if (m) {
+    const idx = text.search(headingRe);
+    mainText = text.slice(0, idx).trimEnd();
+    sourcesText = text.slice(idx + m[0].length);
+    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1); // behoud taal
+  }
 
-    // Parse elke bronnenregel en negeer eventuele bestaande [n] → we hernummeren 1..N
-    const lines = rawSources.split('\n').map(s => s.trim()).filter(Boolean);
-    sources = lines.map((line, idx) => {
+  // Als we bronnen hebben, parse ze
+  if (sourcesText) {
+    const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
+    sources = lines.map((line, i) => {
       const url = (line.match(/https?:\/\/\S+/i) || [,''])[1] || '';
       const parts = line.replace(/\[\d+\]\s*/,'').split('|').map(s => s.trim());
       return {
-        number: String(idx + 1),
+        number: String(i + 1),
         title: parts[0] || line.replace(/\[\d+\]\s*/,'').trim(),
         location: parts[1] || '',
         date: parts[2] || '',
         url
       };
     });
-
-    mainText = rawMain;
   }
 
-  // 2) Azure-markers → sequentiële [n] die naar bronnen verwijzen
-  //    Voorbeeld: "……" → "… [1] … [2]"
+  // Azure markers → [n] verwijzingen (altijd inline maken als er bronnen zijn)
   if (sources.length > 0) {
     let markerIdx = 0;
     mainText = mainText.replace(/【[^】]*source】/g, () => {
       markerIdx += 1;
-      const n = Math.min(markerIdx, sources.length); // bij > markers dan bronnen: cap op laatste
+      const n = Math.min(markerIdx, sources.length);
       return ` [${n}]`;
     });
-
-    // Als er nog géén [n] in de tekst staat (geen Azure markers aanwezig),
-    // voeg dan één verwijzing naar [1] toe aan het eind, zodat er altijd een inline referentie is.
     if (!/\[\d+\]/.test(mainText)) {
       mainText = mainText.trimEnd() + ' [1]';
     }
   } else {
-    // Geen Bronnen-blok? Verwijder Azure-artefacts compleet.
+    // Geen bronnenblok: strip Azure artefacts
     mainText = mainText.replace(/【[^】]*source】/g, '');
   }
 
-  // 3) Markdown → HTML (met veilige escaping) en [n] → klikbare refs
+  // Markdown → HTML en [n] klikbaar
   let html = mainText;
   html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
              .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
@@ -660,7 +662,6 @@ function parseMessageWithCitations(text) {
            .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
            .replace(/\|\|\|I\|\|\|/g, '<em>')
            .replace(/\|\|\|\/I\|\|\|/g, '</em>')
-           // maak elke [n] een klikbare verwijzing naar de Bronnen-sectie
            .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
            .replace(/^- (.+)$/gm, '• $1')
            .replace(/\n\n+/g, '</p><p>')
@@ -669,7 +670,7 @@ function parseMessageWithCitations(text) {
   html = '<p>' + html + '</p>';
   html = html.replace(/<p>\s*<\/p>/g, '');
 
-  return { html, sources };
+  return { html, sources, headerLabel };
 }
 
   function escapeHtml(text) {
@@ -678,36 +679,63 @@ function parseMessageWithCitations(text) {
     return div.innerHTML;
   }
 
-  function renderCitationsBlock(sources) {
-    if (sources.length === 0) return '';
-    
-    const citationItems = sources.map(s => `
-      <div class="citation-item" data-source="${s.number}">
+    function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
+  if (sources.length === 0) return '';
+
+  // Eén bron → compact zonder kop
+  if (sources.length === 1) {
+    const s = sources[0];
+    const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
+    return `
+      <div class="citations single">
+        <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
+          <div class="citation-number">1</div>
+          <div class="citation-content">
+            <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
+            <div class="citation-source">${meta}</div>
+          </div>
+          <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>`;
+  }
+
+  // Meerdere bronnen → lijst met kop (Bronnen/Sources)
+  const items = sources.map(s => {
+    const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
+    const wrapperStart = s.url
+      ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
+      : `<div class="citation-item" data-source="${s.number}">`;
+    const wrapperEnd = s.url ? `</a>` : `</div>`;
+    return `
+      ${wrapperStart}
         <div class="citation-number">${s.number}</div>
         <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title)}</div>
-          <div class="citation-source">${escapeHtml(s.location)}${s.date ? ' • ' + escapeHtml(s.date) : ''}</div>
+          <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
+          <div class="citation-source">${meta}</div>
         </div>
         <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-      </div>
-    `).join('');
-    
-    return `
-      <div class="citations">
-        <div class="citations-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Bronnen
-        </div>
-        <div class="citation-list">
-          ${citationItems}
-        </div>
-      </div>
+      ${wrapperEnd}
     `;
-  }
+  }).join('');
+
+  return `
+    <div class="citations">
+      <div class="citations-header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        ${escapeHtml(headerLabel)}
+      </div>
+      <div class="citation-list">
+        ${items}
+      </div>
+    </div>
+  `;
+}
 
   // ---------- UI Functions ----------
   function showTyping() {
@@ -1097,9 +1125,9 @@ function parseMessageWithCitations(text) {
         
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
-          citationsEl.innerHTML = renderCitationsBlock(sources);
+          citationsEl.innerHTML = renderCitationsBlock(sources, headerLabel);
           wrap.appendChild(citationsEl.firstElementChild);
-          attachCitationHandlers(bubble, wrap);
+          attachCitationHandlers(bubble, wrap, sources);
         }
         
         msg.appendChild(wrap);
@@ -1197,9 +1225,9 @@ function parseMessageWithCitations(text) {
         // Add citations
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
-          citationsEl.innerHTML = renderCitationsBlock(sources);
+          citationsEl.innerHTML = renderCitationsBlock(sources, headerLabel);
           wrap.appendChild(citationsEl.firstElementChild);
-          attachCitationHandlers(bubble, wrap);
+          attachCitationHandlers(bubble, wrap, sources);
         }
         
         chatlog.scrollTop = chatlog.scrollHeight;
