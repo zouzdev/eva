@@ -462,22 +462,22 @@
   <!-- Sidebar -->
   <aside class="history-sidebar" id="sidebar" aria-label="Geschiedenis">
     <div class="sb-header">
-      <div class="sb-title">Geschiedenis</div>
-      <button id="newChatBtn" class="btn-small" title="Nieuw gesprek">+ Nieuw</button>
+      <div class="sb-title">History</div>
+      <button id="newChatBtn" class="btn-small" title="New conversation">+ New</button>
     </div>
 
     <div class="sb-section">
-      <h4>Vandaag</h4>
+      <h4>Today</h4>
       <div class="history-list" id="list-today"></div>
     </div>
 
     <div class="sb-section">
-      <h4>Gisteren</h4>
+      <h4>Yesterday</h4>
       <div class="history-list" id="list-yesterday"></div>
     </div>
 
     <div class="sb-section">
-      <h4>In de afgelopen 7 dagen</h4>
+      <h4>Past 7 days</h4>
       <div class="history-list" id="list-week"></div>
     </div>
   </aside>
@@ -548,11 +548,11 @@
 
   <div id="delPopup" class="popup" role="dialog" aria-modal="true" aria-labelledby="delPopupTitle" aria-describedby="delPopupDesc">
     <div class="popup-content" tabindex="-1">
-      <h2 class="popup-title" id="delPopupTitle">Gesprek verwijderen?</h2>
-      <p class="popup-desc" id="delPopupDesc">Dit verwijdert het volledige gesprek uit de geschiedenis. Deze actie kan niet ongedaan worden gemaakt.</p>
+      <h2 class="popup-title" id="delPopupTitle">Clear chat?</h2>
+      <p class="popup-desc" id="delPopupDesc">This will delete all messages in this session. This action cannot be undone.</p>
       <div class="popup-buttons">
-        <button id="delCancelBtn" class="btn btn-secondary">Annuleren</button>
-        <button id="delConfirmBtn" class="btn btn-danger">Ja, verwijderen</button>
+        <button id="delCancelBtn" class="btn btn-secondary">Cancel</button>
+        <button id="delConfirmBtn" class="btn btn-danger">Yes, clear</button>
       </div>
     </div>
   </div>
@@ -844,7 +844,7 @@ function parseMessageWithCitations(text) {
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
   function titleFrom(text){
-    return (text || 'Nieuw gesprek').replace(/\s+/g,' ').trim().slice(0,60);
+    return (text || 'New conversation').replace(/\s+/g,' ').trim().slice(0,60);
   }
   function groupSessions(sessions){
     const res = { today: [], yesterday: [], week: [] };
@@ -885,7 +885,7 @@ function parseMessageWithCitations(text) {
         const meta = document.createElement('div');
         meta.className='hi-meta';
         const t = document.createElement('div');
-        t.className='hi-title'; t.textContent = s.title || 'Nieuw gesprek';
+        t.className='hi-title'; t.textContent = s.title || 'New conversation';
         const ti = document.createElement('div');
         ti.className='hi-time'; ti.textContent = formatTime(s.updatedAt || s.createdAt);
         meta.appendChild(t); meta.appendChild(ti);
@@ -949,7 +949,7 @@ function parseMessageWithCitations(text) {
 
     function cleanup(){ input.replaceWith(titleEl); }
     function save(){
-      const newVal = input.value.trim() || 'Nieuw gesprek';
+      const newVal = input.value.trim() || 'New conversation';
       const sessions = loadSessions();
       const idx = sessions.findIndex(s=>s.id===sessionId);
       if(idx>=0){
@@ -974,7 +974,7 @@ function parseMessageWithCitations(text) {
     let sessions = loadSessions();
     let ses = sessions.find(s=>s.id===id);
     if(!ses){
-      ses = { id: uid(), title: 'Nieuw gesprek', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
+      ses = { id: uid(), title: 'New conversation', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
       sessions.push(ses);
       setCurrentId(ses.id);
       saveSessions(sessions);
@@ -989,7 +989,7 @@ function parseMessageWithCitations(text) {
 
   function startNewSession(){
     const sessions = loadSessions();
-    const ses = { id: uid(), title: 'Nieuw gesprek', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
+    const ses = { id: uid(), title: 'New conversation', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
     sessions.push(ses);
     saveSessions(sessions);
     setCurrentId(ses.id);
@@ -1018,7 +1018,7 @@ function parseMessageWithCitations(text) {
     if(idx<0) return;
     const msg = { text, who, at: now() };
     sessions[idx].messages.push(msg);
-    if(who==='user' && sessions[idx].title==='Nieuw gesprek'){
+    if(who==='user' && sessions[idx].title==='New conversation'){
       sessions[idx].title = titleFrom(text);
     }
     sessions[idx].updatedAt = now();
@@ -1066,7 +1066,7 @@ function parseMessageWithCitations(text) {
     const idx = sessions.findIndex(s=>s.id===id);
     if(idx>=0){
       sessions[idx].messages = [];
-      sessions[idx].title = 'Nieuw gesprek';
+      sessions[idx].title = 'New conversation';
       sessions[idx].threadId = null;
       sessions[idx].updatedAt = now();
       saveSessions(sessions);
