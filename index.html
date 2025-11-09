@@ -782,7 +782,7 @@ function escapeHtml(text) {
       ${open}
         <span class="citation-ref" data-citation="${s.number}" title="Klik voor bron">${s.number}</span>
         <div class="citation-content">
-          <div class="citation-title">[${s.number}] ${escapeHtml(s.title || ('Document ' + s.number))}</div>
+          <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
         </div>
       ${close}
     `;
