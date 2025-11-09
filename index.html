@@ -636,13 +636,19 @@ function parseMessageWithCitations(text) {
   let headerLabel = 'Bronnen';
   let sources = [];
 
+  // --- Split main content and sources if present ---
   if (match) {
     const splitIndex = text.search(headingRe);
-    mainText   = text.slice(0, splitIndex).trimEnd();
-    sourcesText= text.slice(splitIndex + match[0].length).trim();
-    headerLabel= match[1].charAt(0).toUpperCase() + match[1].slice(1);
+    mainText    = text.slice(0, splitIndex).trimEnd();
+    sourcesText = text.slice(splitIndex + match[0].length).trim();
+    headerLabel = match[1].charAt(0).toUpperCase() + match[1].slice(1);
   }
 
+  // --- Parse "###" headings into <h1> ---
+  // Matches any line starting with "### " and replaces it with <h1>content</h1>
+  mainText = mainText.replace(/^###\s*(.*)$/gm, '<h1>$1</h1>');
+
+  // --- Extract sources if they exist ---
   if (sourcesText) {
     const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
     sources = lines.map((line, i) => {
@@ -661,6 +667,9 @@ function parseMessageWithCitations(text) {
       };
     });
   }
+
+  return { mainText, sources, headerLabel };
+}
 
   // Azure markers → inline verwijzingen
   const markerRe = /【[^】]*source】/g;
@@ -1359,7 +1368,7 @@ function prefillFromCard(card, { autoSend = false } = {}) {
       addMessage(shown, 'assistant', new Date(), false);
       persistMessage(shown, 'assistant');
     }finally{
-      sending = false;
+      sending = false;  
     }
   }
 
