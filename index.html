@@ -682,16 +682,16 @@
 
     // Verwijder Azure markers (【...source】) en vervang door inline nummers
     let cleanText = mainText;
-    if (sources.length > 0) {
-      let citationIndex = 0;
-      cleanText = cleanText.replace(/【[^】]*source】/g, () => {
-        citationIndex += 1;
-        const num = Math.min(citationIndex, sources.length);
-        return ` [${num}]`;
+      if (sources.length > 0) {
+        let citationIndex = 0;
+        cleanText = cleanText.replace(/【[^】]*source】/g, () => {
+          citationIndex += 1;
+          const num = Math.min(citationIndex, sources.length);
+          return ` [${num}]`;
       });
-      // Als er geen citations in de tekst zijn maar wel bronnen, voeg er één toe aan het einde
-      if (!/\[\d+\]/.test(cleanText)) {
-        cleanText = cleanText.trimEnd() + ' [1]';
+        // Als er geen citations in de tekst zijn maar wel bronnen, voeg er één toe aan het einde
+        if (!/\[\d+\]/.test(cleanText)) {
+          cleanText = cleanText.trimEnd() + ' [1]';
       }
     } else {
       // Geen bronnen gevonden: verwijder Azure markers
@@ -731,12 +731,12 @@
 
     // Verwijder Azure markers (【...source】) en vervang door inline nummers
     let cleanText = mainText;
-    if (sources.length > 0) {
-      let citationIndex = 0;
-      cleanText = cleanText.replace(/【[^】]*source】/g, () => {
-        citationIndex += 1;
-        const num = Math.min(citationIndex, sources.length);
-        return ` [${num}]`;
+      if (sources.length > 0) {
+        let citationIndex = 0;
+        cleanText = cleanText.replace(/【[^】]*source】/g, () => {
+          citationIndex += 1;
+          const num = Math.min(citationIndex, sources.length);
+          return ` [${num}]`;
       });
       // Als er geen citations in de tekst zijn maar wel bronnen, voeg er één toe
       if (!/\[\d+\]/.test(cleanText)) {
@@ -784,27 +784,27 @@
     return div.innerHTML;
   }
 
-    function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
-  if (sources.length === 0) return '';
+  function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
+    if (sources.length === 0) return '';
 
-  // Eén bron → compact zonder kop
-  if (sources.length === 1) {
-    const s = sources[0];
-    const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
-    return `
-      <div class="citations single">
-        <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
-          <div class="citation-number">1</div>
-          <div class="citation-content">
-            <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
-            <div class="citation-source">${meta}</div>
-          </div>
-          <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-      </div>`;
-  }
+    // Eén bron → compact zonder kop
+    if (sources.length === 1) {
+      const s = sources[0];
+      const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
+      return `
+        <div class="citations single">
+          <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
+            <div class="citation-number">1</div>
+            <div class="citation-content">
+              <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
+              <div class="citation-source">${meta}</div>
+            </div>
+            <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>`;
+    }
 
   // Meerdere bronnen → lijst met kop (Bronnen/Sources)
   const items = sources.map(s => {
