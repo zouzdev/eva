@@ -611,104 +611,97 @@
 
   // ---------- Citations Parsing ----------
   function parseMessageWithCitations(text) {
-  // 1) Tolerante heading: begin van regel, optionele spaties, "Bronnen" of "Sources",
-  // optionele dubbele punt, optionele spaties en dan einde regel (LF/CRLF beide).
-  const headingRe = /(^|\r?\n)\s*(Bronnen|Sources)\s*:?\s*(?:\r?\n|$)/i;
-  const m = text.match(headingRe);
+    // Zoek naar "Bronnen:" of "Sources:" sectie
+    const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
+    const match = text.match(headingRe);
 
-  let mainText = text;
-  let sourcesText = '';
-  let headerLabel = 'Bronnen';
-  let sources = [];
+    let mainText = text;
+    let sourcesText = '';
+    let headerLabel = 'Bronnen'; // default NL
+    let sources = [];
 
-  if (m) {
-    const idx = m.index + (m[1] ? m[1].length : 0); // corrigeer voor mogelijke leading newline-capture
-    mainText = text.slice(0, idx).trimEnd();
-    sourcesText = text.slice(idx + (m[0].length - (m[1] ? m[1].length : 0)));
-    headerLabel = m[2].charAt(0).toUpperCase() + m[2].slice(1);
-  }
-
-  // 2) Als we nog geen sourcesText hebben, probeer een fallback:
-  //    pak de laatste 12 regels en kijk of daar regels met [n] staan.
-  if (!sourcesText) {
-    const lines = text.split(/\r?\n/);
-    const tail = lines.slice(-12);
-    const footnoteLines = tail.filter(l => /^\s*\[\d+\]\s+/.test(l));
-    if (footnoteLines.length) {
-      // haal die voetnoten weg uit mainText
-      const cutIndex = text.lastIndexOf(footnoteLines[0]);
-      if (cutIndex > -1) mainText = text.slice(0, cutIndex).trimEnd();
-      sourcesText = footnoteLines.join('\n');
-      // label afleiden op taal van de tekst (heel simpel)
-      headerLabel = /[أ-ي]|[اأإآ]/.test(text) ? 'المصادر' : /Sources/i.test(text) ? 'Sources' : 'Bronnen';
+    if (match) {
+      const headingIndex = text.search(headingRe);
+      mainText = text.slice(0, headingIndex).trimEnd();
+      sourcesText = text.slice(headingIndex + match[0].length);
+      headerLabel = match[1].charAt(0).toUpperCase() + match[1].slice(1); // behoud taal
     }
-  }
 
-  // 3) Parseregels naar objecten
-  if (sourcesText) {
-    const lines = sourcesText
-      .split(/\r?\n/)
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    sources = lines.map((line, i) => {
-      // URL correct pakken uit match()[0]
-      const urlMatch = line.match(/https?:\/\/\S+/i);
-      const url = urlMatch ? urlMatch[0] : '';
-
-      // Titel | locatie | datum (allemaal optioneel)
-      const cleaned = line.replace(/^\[\d+\]\s*/, '');
-      const parts = cleaned.split('|').map(s => s.trim());
-
-      return {
-        number: String(i + 1),
-        title: parts[0] || cleaned,
-        location: parts[1] || '',
-        date: parts[2] || '',
-        url
-      };
-    });
-  }
-
-  // 4) Azure-achtige markers naar [n] als er bronnen zijn
-  if (sources.length > 0) {
-    let markerIdx = 0;
-    mainText = mainText.replace(/【[^】]*source】/gi, () => {
-      markerIdx += 1;
-      const n = Math.min(markerIdx, sources.length);
-      return ` [${n}]`;
-    });
-
-    // Als er nog geen [n] in de tekst staat, forceer [1] op het einde
-    if (!/\[\d+\]/.test(mainText)) {
-      mainText = mainText.trimEnd() + ' [1]';
+    // Parse bronnen als ze gevonden zijn
+    if (sourcesText) {
+      const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
+      sources = lines.map((line, i) => {
+        // Probeer URL te vinden
+        const urlMatch = line.match(/(https?:\/\/[^\s\)]+)/i);
+        const url = urlMatch ? urlMatch[1] : '';
+        
+        // Verwijder [nummer] prefix en split op |
+        const cleanLine = line.replace(/^\[\d+\]\s*/, '').trim();
+        const parts = cleanLine.split('|').map(s => s.trim());
+        
+        // Haal URL uit title als deze er nog in staat
+        let title = parts[0] || cleanLine;
+        if (url) {
+          title = title.replace(url, '').trim();
+        }
+        
+        return {
+          number: String(i + 1),
+          title: title || 'Bron ' + (i + 1),
+          location: parts[1] || '',
+          date: parts[2] || '',
+          url: url
+        };
+      });
     }
-  } else {
-    // Geen bronnenblok → strip Azure artefacts
-    mainText = mainText.replace(/【[^】]*source】/gi, '');
+
+    // Verwijder Azure markers (【...source】) en vervang door inline nummers
+    let cleanText = mainText;
+    if (sources.length > 0) {
+      let citationIndex = 0;
+      cleanText = cleanText.replace(/【[^】]*source】/g, () => {
+        citationIndex += 1;
+        const num = Math.min(citationIndex, sources.length);
+        return ` [${num}]`;
+      });
+      // Als er geen citations in de tekst zijn maar wel bronnen, voeg er één toe
+      if (!/\[\d+\]/.test(cleanText)) {
+        cleanText = cleanText.trimEnd() + ' [1]';
+      }
+    } else {
+      // Geen bronnen gevonden: verwijder Azure markers
+      cleanText = cleanText.replace(/【[^】]*source】/g, '');
+    }
+
+    // Markdown → HTML conversie
+    let html = cleanText;
+    
+    // Bescherm bold/italic tegen escape
+    html = html.replace(/\*\*(.+?)\*\*/g, '|||BOLD|||$1|||/BOLD|||')
+               .replace(/__(.+?)__/g, '|||BOLD|||$1|||/BOLD|||')
+               .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC|||$1|||/ITALIC|||');
+
+    // Escape HTML
+    html = escapeHtml(html);
+    
+    // Herstel bold/italic en voeg citation refs toe
+    html = html.replace(/\|\|\|BOLD\|\|\|/g, '<strong>')
+               .replace(/\|\|\|\/BOLD\|\|\|/g, '</strong>')
+               .replace(/\|\|\|ITALIC\|\|\|/g, '<em>')
+               .replace(/\|\|\|\/ITALIC\|\|\|/g, '</em>')
+               .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
+    
+    // Bullets en line breaks
+    html = html.replace(/^- (.+)$/gm, '• $1')
+               .replace(/\n\n+/g, '</p><p>')
+               .replace(/\n/g, '<br>');
+
+    // Wrap in paragraphs
+    html = '<p>' + html + '</p>';
+    html = html.replace(/<p>\s*<\/p>/g, '');
+
+    return { html, sources, headerLabel };
   }
-
-  // 5) Markdown light → HTML + klikbare [n]
-  let html = mainText;
-  html = html.replace(/\*\*(.+?)\*\*/g, '|||B|||$1|||/B|||')
-             .replace(/__(.+?)__/g, '|||B|||$1|||/B|||')
-             .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||I|||$1|||/I|||');
-
-  html = escapeHtml(html)
-           .replace(/\|\|\|B\|\|\|/g, '<strong>')
-           .replace(/\|\|\|\/B\|\|\|/g, '</strong>')
-           .replace(/\|\|\|I\|\|\|/g, '<em>')
-           .replace(/\|\|\|\/I\|\|\|/g, '</em>')
-           .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
-           .replace(/^- (.+)$/gm, '• $1')
-           .replace(/\n\n+/g, '</p><p>')
-           .replace(/\n/g, '<br>');
-
-  html = '<p>' + html + '</p>';
-  html = html.replace(/<p>\s*<\/p>/g, '');
-
-  return { html, sources, headerLabel };
-}
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
