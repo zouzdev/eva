@@ -55,6 +55,26 @@
     --ui-scale: 0.8;
   }
 
+  .citations {
+  margin-top: 12px;
+  background: var(--citation-bg);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.citations-header {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.citation-item.highlight {
+  background: var(--citation-hover);
+  border-color: var(--brand);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+}
+
   * { box-sizing: border-box; }
   html,body { height: 100%; }
   body{
@@ -708,39 +728,21 @@ function parseMessageWithCitations(text) {
   }
 
   function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
-  if (sources.length === 0) return '';
+  if (!sources || sources.length === 0) return '';
 
-  if (sources.length === 1) {
-    const s = sources[0];
-    return `
-      <div class="citations single">
-        <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
-          <div class="citation-number">1</div>
-          <div class="citation-content">
-            <div class="citation-title">${escapeHtml(s.title || 'Bron')}</div>
-          </div>
-          <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-      </div>`;
-  }
-
-  // ... laat je multi-source gedeelte ongewijzigd
   const items = sources.map(s => {
     const wrapperStart = s.url
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
+
     const wrapperEnd = s.url ? `</a>` : `</div>`;
+
     return `
       ${wrapperStart}
         <div class="citation-number">${s.number}</div>
         <div class="citation-content">
           <div class="citation-title">${escapeHtml(s.title || 'Bron')}</div>
         </div>
-        <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
       ${wrapperEnd}
     `;
   }).join('');
@@ -748,10 +750,7 @@ function parseMessageWithCitations(text) {
   return `
     <div class="citations">
       <div class="citations-header">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        ${escapeHtml(headerLabel)}
+        ${escapeHtml(headerLabel)}:
       </div>
       <div class="citation-list">
         ${items}
@@ -759,6 +758,7 @@ function parseMessageWithCitations(text) {
     </div>
   `;
 }
+
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
@@ -1279,30 +1279,19 @@ function parseMessageWithCitations(text) {
   }
 
   function attachCitationHandlers(bubble, wrap, sources) {
+  const list = wrap.querySelector('.citation-list');
+  if (!list) return;
+
   bubble.querySelectorAll('.citation-ref').forEach(ref => {
     ref.addEventListener('click', function () {
       const num = this.getAttribute('data-citation');
 
-      // probeer eerst de multi-bronnen lijst
-      let item = wrap.querySelector(`.citation-item[data-source="${num}"]`);
+      const item = list.querySelector(`.citation-item[data-source="${num}"]`);
       if (item) {
-        wrap.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+        list.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
         item.classList.add('highlight');
         item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         setTimeout(() => item.classList.remove('highlight'), 1500);
-        return;
-      }
-
-      // fallback: single-bron layout
-      const singleLink = wrap.querySelector('.citations.single .citation-link');
-      if (singleLink) {
-        singleLink.classList.add('highlight');
-        singleLink.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setTimeout(() => singleLink.classList.remove('highlight'), 1500);
-
-        // optioneel: open ook de URL (indien aanwezig)
-        const href = singleLink.getAttribute('href');
-        if (href) window.open(href, '_blank', 'noopener');
       }
     });
   });
