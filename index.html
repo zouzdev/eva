@@ -1084,17 +1084,9 @@ function prefillFromCard(card, { autoSend = false } = {}) {
   }
 }
 
-cards.forEach(card => {
-  card.addEventListener('click', () => {
-    const prompt =
-      card.getAttribute('data-prompt') ||
-      (card.querySelector('h3')?.textContent?.trim() || '');
-    promptInput.value = prompt;
-    const len = prompt.length;
-    promptInput.focus();
-    promptInput.setSelectionRange(len, len);
+  cards.forEach(card => {
+    card.addEventListener('click', () => prefillFromCard(card /*, { autoSend: true }*/));
   });
-});
 
 
   // Modal clear
