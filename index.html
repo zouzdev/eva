@@ -611,8 +611,10 @@
 
   // ---------- Citations Parsing ----------
   function parseMessageWithCitations(text) {
-    // Zoek naar "Bronnen:" of "Sources:" sectie
-    const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n/i;
+    console.log('Original text:', text);
+    
+    // Zoek naar "Bronnen:" of "Sources:" sectie (inclusief varianten)
+    const headingRe = /\n\s*(Bronnen|Sources)\s*:\s*\n([\s\S]*?)(?=\n\n|$)/i;
     const match = text.match(headingRe);
 
     let mainText = text;
@@ -621,39 +623,47 @@
     let sources = [];
 
     if (match) {
-      const headingIndex = text.search(headingRe);
-      mainText = text.slice(0, headingIndex).trimEnd();
-      sourcesText = text.slice(headingIndex + match[0].length);
-      headerLabel = match[1].charAt(0).toUpperCase() + match[1].slice(1); // behoud taal
+      console.log('Found sources section:', match[0]);
+      // Verwijder hele bronnen sectie uit de hoofdtekst
+      mainText = text.replace(headingRe, '').trimEnd();
+      sourcesText = match[2]; // capture group 2 bevat de bronnen
+      headerLabel = match[1].charAt(0).toUpperCase() + match[1].slice(1);
     }
 
     // Parse bronnen als ze gevonden zijn
     if (sourcesText) {
+      console.log('Parsing sources:', sourcesText);
       const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
       sources = lines.map((line, i) => {
-        // Probeer URL te vinden
-        const urlMatch = line.match(/(https?:\/\/[^\s\)]+)/i);
+        console.log('Processing line:', line);
+        
+        // Probeer URL te vinden (greedy match tot einde of whitespace)
+        const urlMatch = line.match(/(https?:\/\/[^\s]+)/i);
         const url = urlMatch ? urlMatch[1] : '';
         
-        // Verwijder [nummer] prefix en split op |
-        const cleanLine = line.replace(/^\[\d+\]\s*/, '').trim();
-        const parts = cleanLine.split('|').map(s => s.trim());
-        
-        // Haal URL uit title als deze er nog in staat
-        let title = parts[0] || cleanLine;
+        // Verwijder [nummer] prefix en URL
+        let cleanLine = line.replace(/^\[\d+\]\s*/, '').trim();
         if (url) {
-          title = title.replace(url, '').trim();
+          cleanLine = cleanLine.replace(url, '').trim();
         }
         
-        return {
+        // Split op | voor metadata
+        const parts = cleanLine.split('|').map(s => s.trim());
+        
+        const source = {
           number: String(i + 1),
-          title: title || 'Bron ' + (i + 1),
+          title: parts[0] || 'Bron ' + (i + 1),
           location: parts[1] || '',
           date: parts[2] || '',
           url: url
         };
+        
+        console.log('Parsed source:', source);
+        return source;
       });
     }
+
+    console.log('Final sources array:', sources);
 
     // Verwijder Azure markers (【...source】) en vervang door inline nummers
     let cleanText = mainText;
@@ -700,6 +710,7 @@
     html = '<p>' + html + '</p>';
     html = html.replace(/<p>\s*<\/p>/g, '');
 
+    console.log('Final HTML:', html);
     return { html, sources, headerLabel };
   }
   function escapeHtml(text) {
