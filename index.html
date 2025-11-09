@@ -616,30 +616,40 @@
 
 function parseMessageWithCitations(text) {
   console.log('=== PARSING MESSAGE ===');
-  const headingRe = /\s*\*\*\s*(Bronnen|Sources)\s*:\s*\*\*\s*/i;
-  const match = text.match(headingRe);
 
-  let mainText = text;
-  let sourcesText = '';
-  let headerLabel = 'Bronnen';
-  let sources = [];
+  // Herken "Bronnen"/"Sources" als EIGEN REGEL, optionele ### / ** en optionele :
+  const headingRe = /^(?:\s*(?:#{1,6}\s*)?)?(?:\*\*)?\s*(Bronnen|Sources)\s*:?(?:\*\*)?\s*$/im;
+  const m = headingRe.exec(text);
 
-  if (match) {
-    const splitIndex = text.search(headingRe);
-    mainText   = text.slice(0, splitIndex).trimEnd();
-    sourcesText= text.slice(splitIndex + match[0].length).trim();
-    headerLabel= match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  let mainText   = text;
+  let sourcesText= '';
+  let headerLabel= 'Bronnen';
+  let sources    = [];
+
+  if (m) {
+    // Alles vóór de match is hoofdtekst; alles erna is bronnenlijst
+    mainText    = text.slice(0, m.index).trimEnd();
+    sourcesText = text.slice(m.index + m[0].length).trim();
+    headerLabel = m[1].charAt(0).toUpperCase() + m[1].slice(1);
   }
 
+  // --- Bronnen parsen -------------------------------------------------------
   if (sourcesText) {
     const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
     sources = lines.map((line, i) => {
-      let cleanLine = line.replace(/^-\s*/, '').trim();
+      // Sta -, 1. , 1) of [1] als prefix toe
+      let cleanLine = line.replace(/^\s*(?:-\s*|\d+[.)]\s*|\[\d+\]\s*)/, '').trim();
+
+      // URL (eerste http... token)
       const urlMatch = cleanLine.match(/(https?:\/\/[^\s]+)/i);
       const url = urlMatch ? urlMatch[1] : '';
-      cleanLine = cleanLine.replace(/^\[\d+\]\s*/, '').trim();
+
+      // Haal URL uit zichtbare titel
       if (url) cleanLine = cleanLine.replace(url, '').trim();
+
+      // Optioneel metadata via "titel | locatie | datum"
       const parts = cleanLine.split('|').map(s => s.trim());
+
       return {
         number: String(i + 1),
         title: parts[0] || 'Bron ' + (i + 1),
@@ -650,53 +660,68 @@ function parseMessageWithCitations(text) {
     });
   }
 
-  // Azure markers → inline verwijzingen
+  // --- Azure markers → inline [n] -------------------------------------------
   const markerRe = /【[^】]*source】/g;
   let cleanText = mainText;
 
   if (sources.length === 1) {
+    // Bij één bron: plaats slechts één [1] en strip overige markers
     let firstPlaced = false;
     cleanText = cleanText.replace(markerRe, () => {
-      if (firstPlaced) return '';        // extra markers verwijderen
+      if (firstPlaced) return '';
       firstPlaced = true;
-      return ' [1]';                     // alleen de eerste → [1]
+      return ' [1]';
     });
+    // Geen marker én geen [n] in tekst? Voeg [1] aan einde toe
     if (!firstPlaced && !/\[\d+\]/.test(cleanText)) {
-      cleanText = cleanText.trimEnd() + ' [1]'; // fallback: geen marker & geen [n]
+      cleanText = cleanText.trimEnd() + ' [1]';
     }
   } else if (sources.length > 1) {
+    // Meerdere bronnen → nummer oplopend
     let i = 0;
     cleanText = cleanText.replace(markerRe, () => {
       i += 1;
       const n = Math.min(i, sources.length);
       return ` [${n}]`;
     });
-    if (i === 0 && sources.length > 0 && !/\[\d+\]/.test(cleanText)) {
+    // Als er wél bronnen zijn maar geen marker gevonden is, zet dan [1] achteraan
+    if (i === 0 && !/\[\d+\]/.test(cleanText)) {
       cleanText = cleanText.trimEnd() + ' [1]';
     }
   } else {
-    // geen bronnen → markers weg
+    // Geen bronnen → markers gewoon verwijderen
     cleanText = cleanText.replace(markerRe, '');
   }
 
-  // Markdown → HTML
+  // --- Markdown → HTML ------------------------------------------------------
+  // Eerst placeholders zetten zodat we daarna veilig kunnen escapen
   let html = cleanText
+    .replace(/^### (.+)$/gm, '|||H3|||$1|||/H3|||')
+    .replace(/^## (.+)$/gm,  '|||H2|||$1|||/H2|||')
+    .replace(/^# (.+)$/gm,   '|||H1|||$1|||/H1|||')
     .replace(/\*\*(.+?)\*\*/g, '|||BOLD|||$1|||/BOLD|||')
-    .replace(/__(.+?)__/g, '|||BOLD|||$1|||/BOLD|||')
+    .replace(/__(.+?)__/g,     '|||BOLD|||$1|||/BOLD|||')
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '|||ITALIC|||$1|||/ITALIC|||');
 
+  // Escape HTML, daarna placeholders terugzetten + citation-refs maken
   html = escapeHtml(html)
-    .replace(/\|\|\|BOLD\|\|\|/g, '<strong>')
-    .replace(/\|\|\|\/BOLD\|\|\|/g, '</strong>')
-    .replace(/\|\|\|ITALIC\|\|\|/g, '<em>')
-    .replace(/\|\|\|\/ITALIC\|\|\|/g, '</em>')
+    .replace(/\|\|\|H1\|\|\|/g, '<h1>').replace(/\|\|\|\/H1\|\|\|/g, '</h1>')
+    .replace(/\|\|\|H2\|\|\|/g, '<h2>').replace(/\|\|\|\/H2\|\|\|/g, '</h2>')
+    .replace(/\|\|\|H3\|\|\|/g, '<h3>').replace(/\|\|\|\/H3\|\|\|/g, '</h3>')
+    .replace(/\|\|\|BOLD\|\|\|/g, '<strong>').replace(/\|\|\|\/BOLD\|\|\|/g, '</strong>')
+    .replace(/\|\|\|ITALIC\|\|\|/g, '<em>').replace(/\|\|\|\/ITALIC\|\|\|/g, '</em>')
     .replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>')
+    // Bullets en paragrafen
     .replace(/^- (.+)$/gm, '• $1')
     .replace(/\n\n+/g, '</p><p>')
     .replace(/\n/g, '<br>');
 
+  // In paragrafen wikkelen, maar headings mogen niet in <p> zitten
   html = '<p>' + html + '</p>';
-  html = html.replace(/<p>\s*<\/p>/g, '');
+  html = html
+    .replace(/<p>\s*(<(?:h1|h2|h3)\b[^>]*>)/g, '$1')
+    .replace(/(<\/(?:h1|h2|h3)>)\s*<\/p>/g, '$1')
+    .replace(/<p>\s*<\/p>/g, '');
 
   return { html, sources, headerLabel };
 }
