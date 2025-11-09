@@ -1117,7 +1117,7 @@
         chatlog.scrollTop = chatlog.scrollHeight;
         
         // Start typewriter animation
-        typewriterEffect(bubble, html, sources, wrap);
+        typewriterEffect(bubble, html, sources, wrap, headerLabel);
       } else {
         // Instant display for history
         bubble.innerHTML = html;
@@ -1161,7 +1161,7 @@
     }
   }
 
-  function typewriterEffect(bubble, html, sources, wrap) {
+  function typewriterEffect(bubble, html, sources, wrap, headerLabel) {
     // Configuration
     const CHARS_PER_FRAME = 3; // Higher = faster typing (3 chars at once is fast but smooth)
     const FRAME_DELAY = 16; // ~60fps
