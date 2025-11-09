@@ -627,23 +627,34 @@
   }
 
 function parseMessageWithCitations(text) {
-  // 1) Vind een BRONNEN-regel op zichzelf (strenger, voorkomt false positives)
+  // 1) Knip op een regel die begint met **Bronnen:** of **Sources:**
+  //    -> werkt ook als er direct tekst achter staat op dezelfde regel
   const lines = text.split(/\r?\n/);
   const headingIdx = lines.findIndex(l =>
-    /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*$/i.test(l.trim())
+    /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim())
   );
 
   let mainText = text;
   let sourcesText = '';
+
   if (headingIdx !== -1) {
-    mainText   = lines.slice(0, headingIdx).join('\n').trimEnd();
-    sourcesText= lines.slice(headingIdx + 1).join('\n').trim();
+    const headingLine = lines[headingIdx];
+    // alles vóór de header = hoofdtekst
+    mainText = lines.slice(0, headingIdx).join('\n').trimEnd();
+
+    // haal alles ná de headerregel + evt. content direct achter de header
+    const afterHeaderSameLine = headingLine.replace(/^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, '');
+    const rest = [
+      afterHeaderSameLine,                   // content dat op dezelfde regel stond
+      ...lines.slice(headingIdx + 1)         // en alle regels erna
+    ].join('\n');
+    sourcesText = rest.trim();
   }
 
-  // 2) Parse bronnen uit de regels na de header
-  let sources = [];
+  // 2) Parse & dedup bronnen
+  let rawSources = [];
   if (sourcesText) {
-    sources = sourcesText
+    rawSources = sourcesText
       .split('\n')
       .map(s => s.trim())
       .filter(Boolean)
@@ -652,15 +663,25 @@ function parseMessageWithCitations(text) {
         const urlMatch = clean.match(/(https?:\/\/[^\s]+)$/i);
         const url = urlMatch ? urlMatch[1] : '';
         if (url) clean = clean.replace(url, '').trim();
-        return {
-          number: String(i + 1),
-          title: clean || ('Document ' + (i + 1)),
-          url
-        };
+
+        // soms staat er " | " meta achter titel; hou alleen titel over
+        const title = clean.split('|')[0].trim() || ('Document ' + (i + 1));
+        return { title, url };
       });
   }
 
-  // 3) Azure markers → inline [n] **alleen als er bronnen zijn**
+  // Dedup op (title,url) – behoud volgorde van eerste voorkomen
+  const seen = new Set();
+  const sources = [];
+  rawSources.forEach((s) => {
+    const key = (s.title.toLowerCase() + '|' + (s.url || '')).trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      sources.push({ number: String(sources.length + 1), title: s.title, url: s.url || '' });
+    }
+  });
+
+  // 3) Azure markers → [n] alleen als er bronnen zijn
   const markerRe = /【[^】]*source】/g;
   let cleanText = mainText;
   if (sources.length > 0) {
@@ -671,8 +692,24 @@ function parseMessageWithCitations(text) {
       return ` [${n}]`;
     });
   } else {
-    // geen bronnen → markers volledig weg, en GEEN fallback [1]
     cleanText = cleanText.replace(markerRe, '');
+  }
+
+  // 4) Normaliseer reeds aanwezige [getallen] → remap naar 1..sources.length
+  //    (zodat een losse [10] wordt hernummerd naar [1]..[k])
+  if (sources.length > 0) {
+    let next = 1;
+    const remap = {};
+    cleanText = cleanText.replace(/\[(\d+)\]/g, (_, num) => {
+      if (!remap[num]) {
+        remap[num] = String(next <= sources.length ? next : sources.length);
+        next += 1;
+      }
+      return `[${remap[num]}]`;
+    });
+  } else {
+    // geen bronnen → verwijder losse [getal] die bedoeld waren als citatie
+    cleanText = cleanText.replace(/\[(\d+)\]/g, '');
   }
 
   const html = renderMarkdown(cleanText);
@@ -746,17 +783,14 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
-  function renderCitationsBlock(sources) {
-  // Altijd een container + header volgens jouw regels
+  function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
+  // Altijd precies één blok renderen.
+  // Leeg? Toon "Bronnen: Geen"
   if (!sources || sources.length === 0) {
     return `
       <div class="citations">
         <div class="citations-header"><strong>Bronnen:</strong></div>
-        <div class="citation-list">
-          <div class="citation-item" aria-disabled="true">
-            <div class="citation-content"><em>Geen</em></div>
-          </div>
-        </div>
+        <div class="citation-list"><em>Geen</em></div>
       </div>
     `;
   }
@@ -766,7 +800,6 @@ function escapeHtml(text) {
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
     const close = s.url ? `</a>` : `</div>`;
-
     return `
       ${open}
         <span class="citation-ref" data-citation="${s.number}" title="Klik voor bron">${s.number}</span>
@@ -786,6 +819,7 @@ function escapeHtml(text) {
     </div>
   `;
 }
+
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
