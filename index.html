@@ -54,21 +54,21 @@
     /* 20% kleiner */
     --ui-scale: 0.8;
   }
- /* Collapsible citations */
-.citations.collapsible .citations-header{
-  display:flex; align-items:center; gap:8px;
-  background: transparent; border: 1px solid rgba(124,58,237,.15);
-  padding:8px 12px; border-radius:10px; cursor:pointer; width:100%;
-  font-weight:700; color:#6a6f7a; text-transform:none; letter-spacing:.02em;
-}
-.citations.collapsible .citation-list{ margin-top:10px; }
 
-/* Kleinere nummer-badge */
-.citation-number{
-  min-width:20px; height:20px; font-size:11px; border-radius:6px;
+  .citations {
+  margin-top: 12px;
+  background: var(--citation-bg);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
 }
 
-/* Highlight blijft zoals je had */
+.citations-header {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
 .citation-item.highlight {
   background: var(--citation-hover);
   border-color: var(--brand);
@@ -734,27 +734,25 @@ function parseMessageWithCitations(text) {
     const wrapperStart = s.url
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
+
     const wrapperEnd = s.url ? `</a>` : `</div>`;
+
     return `
       ${wrapperStart}
         <div class="citation-number">${s.number}</div>
         <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
+          <div class="citation-title">${escapeHtml(s.title || 'Bron')}</div>
         </div>
-        <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
       ${wrapperEnd}
     `;
   }).join('');
 
-  // Collapsible container met +/− label
   return `
-    <div class="citations collapsible" data-label="${escapeHtml(headerLabel)}">
-      <button class="citations-header" type="button" aria-expanded="false">
-        <span class="toggle">+ ${escapeHtml(headerLabel)}</span>
-      </button>
-      <div class="citation-list" hidden>
+    <div class="citations">
+      <div class="citations-header">
+        ${escapeHtml(headerLabel)}:
+      </div>
+      <div class="citation-list">
         ${items}
       </div>
     </div>
@@ -1281,33 +1279,13 @@ function parseMessageWithCitations(text) {
   }
 
   function attachCitationHandlers(bubble, wrap, sources) {
-  const container = wrap.querySelector('.citations.collapsible');
-  if (!container) return;
+  const list = wrap.querySelector('.citation-list');
+  if (!list) return;
 
-  const headerBtn = container.querySelector('.citations-header');
-  const list = container.querySelector('.citation-list');
-  const label = container.getAttribute('data-label') || 'Bronnen';
-
-  function setOpen(isOpen) {
-    container.classList.toggle('open', isOpen);
-    headerBtn.setAttribute('aria-expanded', String(isOpen));
-    headerBtn.querySelector('.toggle').textContent = (isOpen ? '− ' : '+ ') + label;
-    if (isOpen) list.removeAttribute('hidden'); else list.setAttribute('hidden', '');
-  }
-
-  // Toggle bij klik op header
-  headerBtn.addEventListener('click', () => {
-    const isOpen = container.classList.contains('open');
-    setOpen(!isOpen);
-  });
-
-  // Klik op inline [n] → open + highlight juiste bron
   bubble.querySelectorAll('.citation-ref').forEach(ref => {
     ref.addEventListener('click', function () {
       const num = this.getAttribute('data-citation');
-      setOpen(true);
 
-      // highlight juiste item
       const item = list.querySelector(`.citation-item[data-source="${num}"]`);
       if (item) {
         list.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
@@ -1318,6 +1296,7 @@ function parseMessageWithCitations(text) {
     });
   });
 }
+
   let sending = false;
   async function sendMessage() {
     if (sending) return;
