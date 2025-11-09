@@ -609,7 +609,7 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
-  // ---------- Citations Parsing ----------
+// ---------- Citations Parsing ----------
   function parseMessageWithCitations(text) {
     console.log('=== PARSING MESSAGE ===');
     console.log('Original text:', text);
@@ -777,6 +777,7 @@
     console.log('Final HTML:', html);
     return { html, sources, headerLabel };
   }
+  
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
