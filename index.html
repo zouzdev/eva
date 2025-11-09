@@ -152,6 +152,17 @@
   .sb-toggle svg{ width:16px; height:16px; }
   body.sb-open .sb-toggle{ right: calc(24px + var(--sb-w)); }
 
+  .citations.single .citation-link{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid rgba(124,58,237,.12);
+    border-radius: 10px;
+    text-decoration: none;
+}
+
   /* zelfde highlight voor <a.citation-link> als voor .citation-item */
 .citation-link.highlight{
   background: var(--citation-hover);
@@ -288,17 +299,11 @@
   }
 
   .citation-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 24px;
-    height: 24px;
-    background: var(--brand);
-    color: white;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: 11px;
+    border-radius: 4px;
   }
 
   .citation-content {
@@ -611,9 +616,6 @@
 
 function parseMessageWithCitations(text) {
   console.log('=== PARSING MESSAGE ===');
-  console.log('Original text:', text);
-
-  // Zoek naar "**Bronnen:**" of "**Sources:**"
   const headingRe = /\s*\*\*\s*(Bronnen|Sources)\s*:\s*\*\*\s*/i;
   const match = text.match(headingRe);
 
@@ -623,19 +625,14 @@ function parseMessageWithCitations(text) {
   let sources = [];
 
   if (match) {
-    console.log('✓ Found sources heading:', match[1]);
     const splitIndex = text.search(headingRe);
-    mainText = text.slice(0, splitIndex).trimEnd();
-    sourcesText = text.slice(splitIndex + match[0].length).trim();
-    headerLabel = match[1].charAt(0).toUpperCase() + match[1].slice(1);
-  } else {
-    console.log('✗ No sources heading found');
+    mainText   = text.slice(0, splitIndex).trimEnd();
+    sourcesText= text.slice(splitIndex + match[0].length).trim();
+    headerLabel= match[1].charAt(0).toUpperCase() + match[1].slice(1);
   }
 
-  // Parse bronnen
   if (sourcesText) {
     const lines = sourcesText.split('\n').map(s => s.trim()).filter(Boolean);
-    console.log('Found', lines.length, 'source lines');
     sources = lines.map((line, i) => {
       let cleanLine = line.replace(/^-\s*/, '').trim();
       const urlMatch = cleanLine.match(/(https?:\/\/[^\s]+)/i);
@@ -643,32 +640,43 @@ function parseMessageWithCitations(text) {
       cleanLine = cleanLine.replace(/^\[\d+\]\s*/, '').trim();
       if (url) cleanLine = cleanLine.replace(url, '').trim();
       const parts = cleanLine.split('|').map(s => s.trim());
-      const source = {
+      return {
         number: String(i + 1),
         title: parts[0] || 'Bron ' + (i + 1),
         location: parts[1] || '',
         date: parts[2] || '',
         url
       };
-      console.log('→ Parsed:', source);
-      return source;
     });
   }
 
-  // Azure markers → inline [n] of verwijderen
+  // Azure markers → inline verwijzingen
+  const markerRe = /【[^】]*source】/g;
   let cleanText = mainText;
-  if (sources.length > 0) {
-    let citationIndex = 0;
-    cleanText = cleanText.replace(/【[^】]*source】/g, () => {
-      citationIndex += 1;
-      const num = Math.min(citationIndex, sources.length);
-      return ` [${num}]`;
+
+  if (sources.length === 1) {
+    let firstPlaced = false;
+    cleanText = cleanText.replace(markerRe, () => {
+      if (firstPlaced) return '';        // extra markers verwijderen
+      firstPlaced = true;
+      return ' [1]';                     // alleen de eerste → [1]
     });
-    if (!/\[\d+\]/.test(cleanText)) {
+    if (!firstPlaced && !/\[\d+\]/.test(cleanText)) {
+      cleanText = cleanText.trimEnd() + ' [1]'; // fallback: geen marker & geen [n]
+    }
+  } else if (sources.length > 1) {
+    let i = 0;
+    cleanText = cleanText.replace(markerRe, () => {
+      i += 1;
+      const n = Math.min(i, sources.length);
+      return ` [${n}]`;
+    });
+    if (i === 0 && sources.length > 0 && !/\[\d+\]/.test(cleanText)) {
       cleanText = cleanText.trimEnd() + ' [1]';
     }
   } else {
-    cleanText = cleanText.replace(/【[^】]*source】/g, '');
+    // geen bronnen → markers weg
+    cleanText = cleanText.replace(markerRe, '');
   }
 
   // Markdown → HTML
@@ -690,7 +698,6 @@ function parseMessageWithCitations(text) {
   html = '<p>' + html + '</p>';
   html = html.replace(/<p>\s*<\/p>/g, '');
 
-  console.log('Final HTML:', html);
   return { html, sources, headerLabel };
 }
   
@@ -701,30 +708,26 @@ function parseMessageWithCitations(text) {
   }
 
   function renderCitationsBlock(sources, headerLabel = 'Bronnen') {
-    if (sources.length === 0) return '';
+  if (sources.length === 0) return '';
 
-    // Eén bron → compact zonder kop
-    if (sources.length === 1) {
-      const s = sources[0];
-      const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
-      return `
-        <div class="citations single">
-          <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
-            <div class="citation-number">1</div>
-            <div class="citation-content">
-              <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
-              <div class="citation-source">${meta}</div>
-            </div>
-            <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-        </div>`;
-    }
+  if (sources.length === 1) {
+    const s = sources[0];
+    return `
+      <div class="citations single">
+        <a class="citation-link" ${s.url ? `href="${s.url}" target="_blank" rel="noopener noreferrer"` : ''}>
+          <div class="citation-number">1</div>
+          <div class="citation-content">
+            <div class="citation-title">${escapeHtml(s.title || 'Bron')}</div>
+          </div>
+          <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>`;
+  }
 
-  // Meerdere bronnen → lijst met kop (Bronnen/Sources)
+  // ... laat je multi-source gedeelte ongewijzigd
   const items = sources.map(s => {
-    const meta = [escapeHtml(s.location || ''), escapeHtml(s.date || '')].filter(Boolean).join(' • ');
     const wrapperStart = s.url
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
@@ -733,8 +736,7 @@ function parseMessageWithCitations(text) {
       ${wrapperStart}
         <div class="citation-number">${s.number}</div>
         <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title || 'Source')}</div>
-          <div class="citation-source">${meta}</div>
+          <div class="citation-title">${escapeHtml(s.title || 'Bron')}</div>
         </div>
         <svg class="citation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" stroke-linecap="round" stroke-linejoin="round"/>
@@ -757,7 +759,6 @@ function parseMessageWithCitations(text) {
     </div>
   `;
 }
-
   // ---------- UI Functions ----------
   function showTyping() {
     const el = document.createElement("div");
