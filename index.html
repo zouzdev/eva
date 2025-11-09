@@ -463,7 +463,7 @@
   <aside class="history-sidebar" id="sidebar" aria-label="Geschiedenis">
     <div class="sb-header">
       <div class="sb-title">History</div>
-      <button id="newChatBtn" class="btn-small" title="Nieuw gesprek">+ New</button>
+      <button id="newChatBtn" class="btn-small" title="New conversation">+ New</button>
     </div>
 
     <div class="sb-section">
@@ -844,7 +844,7 @@ function parseMessageWithCitations(text) {
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
   function titleFrom(text){
-    return (text || 'Nieuw gesprek').replace(/\s+/g,' ').trim().slice(0,60);
+    return (text || 'New conversation').replace(/\s+/g,' ').trim().slice(0,60);
   }
   function groupSessions(sessions){
     const res = { today: [], yesterday: [], week: [] };
@@ -885,7 +885,7 @@ function parseMessageWithCitations(text) {
         const meta = document.createElement('div');
         meta.className='hi-meta';
         const t = document.createElement('div');
-        t.className='hi-title'; t.textContent = s.title || 'Nieuw gesprek';
+        t.className='hi-title'; t.textContent = s.title || 'New conversation';
         const ti = document.createElement('div');
         ti.className='hi-time'; ti.textContent = formatTime(s.updatedAt || s.createdAt);
         meta.appendChild(t); meta.appendChild(ti);
@@ -949,7 +949,7 @@ function parseMessageWithCitations(text) {
 
     function cleanup(){ input.replaceWith(titleEl); }
     function save(){
-      const newVal = input.value.trim() || 'Nieuw gesprek';
+      const newVal = input.value.trim() || 'New conversation';
       const sessions = loadSessions();
       const idx = sessions.findIndex(s=>s.id===sessionId);
       if(idx>=0){
@@ -974,7 +974,7 @@ function parseMessageWithCitations(text) {
     let sessions = loadSessions();
     let ses = sessions.find(s=>s.id===id);
     if(!ses){
-      ses = { id: uid(), title: 'Nieuw gesprek', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
+      ses = { id: uid(), title: 'New conversation', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
       sessions.push(ses);
       setCurrentId(ses.id);
       saveSessions(sessions);
@@ -989,7 +989,7 @@ function parseMessageWithCitations(text) {
 
   function startNewSession(){
     const sessions = loadSessions();
-    const ses = { id: uid(), title: 'Nieuw gesprek', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
+    const ses = { id: uid(), title: 'New conversation', createdAt: now(), updatedAt: now(), messages: [], threadId: null };
     sessions.push(ses);
     saveSessions(sessions);
     setCurrentId(ses.id);
@@ -1018,7 +1018,7 @@ function parseMessageWithCitations(text) {
     if(idx<0) return;
     const msg = { text, who, at: now() };
     sessions[idx].messages.push(msg);
-    if(who==='user' && sessions[idx].title==='Nieuw gesprek'){
+    if(who==='user' && sessions[idx].title==='New conversation'){
       sessions[idx].title = titleFrom(text);
     }
     sessions[idx].updatedAt = now();
@@ -1066,7 +1066,7 @@ function parseMessageWithCitations(text) {
     const idx = sessions.findIndex(s=>s.id===id);
     if(idx>=0){
       sessions[idx].messages = [];
-      sessions[idx].title = 'Nieuw gesprek';
+      sessions[idx].title = 'New conversation';
       sessions[idx].threadId = null;
       sessions[idx].updatedAt = now();
       saveSessions(sessions);
