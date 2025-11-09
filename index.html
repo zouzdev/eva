@@ -62,9 +62,6 @@
   border-radius: 12px;
   padding: 12px 14px;
 }
-  
-.bubble p { margin: 0 0 .5rem 0; }
-.bubble h1, .bubble h2, .bubble h3 { margin: .6rem 0 .4rem; }
 
 .citations-header {
   font-size: 13px;
@@ -629,126 +626,173 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
-function escapeForRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-
-function parseMessageWithCitations(text){
-  // 1) Split hoofdtekst vs bronnen
+function parseMessageWithCitations(text) {
+  // --- 1) Splits hoofdtekst vs. bronnen-sectie ---
   const lines = text.split(/\r?\n/);
-  const hIdx = lines.findIndex(l => /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim()));
-  let mainText = text, sourcesText = '';
-  if (hIdx !== -1){
-    const hLine = lines[hIdx];
-    mainText = lines.slice(0, hIdx).join('\n').trimEnd();
-    const restOnLine = hLine.replace(/^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i,'');
-    sourcesText = [restOnLine, ...lines.slice(hIdx+1)].join('\n').trim();
+  const headingIdx = lines.findIndex(l =>
+    /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim())
+  );
+
+  let mainText = text;
+  let sourcesText = '';
+
+  if (headingIdx !== -1) {
+    const headingLine = lines[headingIdx];
+    mainText = lines.slice(0, headingIdx).join('\n').trimEnd();
+
+    const afterHeaderSameLine = headingLine.replace(
+      /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, ''
+    );
+    sourcesText = [afterHeaderSameLine, ...lines.slice(headingIdx + 1)]
+      .join('\n')
+      .trim();
   }
 
-  // 2) Parse + dedup bronnen
+  // --- 2) Parse + de-dup bronnen ---
   let parsed = [];
-  if (sourcesText){
-    parsed = sourcesText.split('\n')
-      .map(s => s.trim()).filter(Boolean)
-      .map((line,i) => {
-        let clean = line.replace(/^-\s*/,'').replace(/^\[\d+\]\s*/,'').trim();
-        const urlMatch = clean.match(/(https?:\/\/\S+)$/i);
+  if (sourcesText) {
+    parsed = sourcesText
+      .split('\n')
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map((line, i) => {
+        let clean = line.replace(/^-\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
+        const urlMatch = clean.match(/(https?:\/\/[^\s]+)$/i);
         const url = urlMatch ? urlMatch[1] : '';
-        if (url) clean = clean.replace(url,'').trim();
-        const title = (clean.split('|')[0] || '').trim() || ('Document ' + (i+1));
+        if (url) clean = clean.replace(url, '').trim();
+        const title = clean.split('|')[0].trim() || ('Document ' + (i + 1));
         return { title, url };
       });
   }
   const seen = new Set();
   const sources = [];
-  for (const s of parsed){
-    const key = (s.title.toLowerCase() + '|' + (s.url||'')).trim();
-    if (!seen.has(key)){ seen.add(key); sources.push({ number: String(sources.length+1), title: s.title, url: s.url||'' }); }
-  }
-
-  // 3) Vervang expliciete documenttitels in de hoofdtekst door [n]
-  //    (herken “Titel”, "Titel", 'Titel' en plain Titel)
-  let replacedATitle = false;
-  sources.forEach((s, idx) => {
-    const n = idx + 1;
-    const esc = escapeForRx(s.title);
-    if (!esc) return;
-
-    [
-      new RegExp(`“\\s*${esc}\\s*”`, 'g'),
-      new RegExp(`"\\s*${esc}\\s*"`, 'g'),
-      new RegExp(`'\\s*${esc}\\s*'`, 'g'),
-      new RegExp(`\\b${esc}\\b`, 'g')
-    ].forEach(rx => {
-      const before = mainText;
-      mainText = mainText.replace(rx, `[${n}]`);
-      if (mainText !== before) replacedATitle = true;
-    });
+  parsed.forEach(s => {
+    const key = (s.title.toLowerCase() + '|' + (s.url || '')).trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      sources.push({ number: String(sources.length + 1), title: s.title, url: s.url || '' });
+    }
   });
 
-  // 4) Markers van Azure → [n], maar **alleen** als er nog géén [n] in de tekst staan
-  const hasExplicitRefs = /\[\d+\]/.test(mainText);
+  // --- 3) Markers → [n] (alleen als er bronnen zijn) ---
   const markerRe = /【[^】]*source】/g;
   let cleanText = mainText;
-
-  if (sources.length === 0){
-    cleanText = cleanText.replace(markerRe, ''); // geen bronnen → markers weg
-  } else if (hasExplicitRefs){
-    cleanText = cleanText.replace(markerRe, ''); // jij bepaalt de nummers → niets toevoegen
+  if (sources.length > 0) {
+    let i = 0;
+    cleanText = cleanText.replace(markerRe, () => {
+      i += 1;
+      const n = Math.min(i, sources.length);
+      return ` [${n}]`;
+    });
   } else {
-    if (sources.length === 1){
-      let placed = false;
-      cleanText = cleanText.replace(markerRe, () => { placed = true; return ' [1]'; });
-      if (!placed) cleanText = cleanText.trimEnd() + ' [1]';
-    } else {
-      let i = 0;
-      cleanText = cleanText.replace(markerRe, () => {
-        i += 1; return ` [${Math.min(i, sources.length)}]`;
-      });
-      if (!/\[\d+\]/.test(cleanText)) cleanText = cleanText.trimEnd() + ' [1]';
-    }
+    cleanText = cleanText.replace(markerRe, '');
   }
 
-  // 5) Eén nette verwijzing naar bronnen-sectie (geen aparte alinea)
-  if (/\[\d+\]/.test(cleanText) && !/Zie \*\*Bronnen:\*\*/i.test(cleanText)){
-    cleanText = cleanText.replace(/\s*$/, ' — zie **Bronnen:** hieronder.');
+  // --- 4) Hernummer bestaande [getal] → 1..k en dedup runs ---
+  if (sources.length > 0) {
+    let next = 1;
+    const remap = {};
+    cleanText = cleanText.replace(/\[(\d+)\]/g, (_, num) => {
+      if (!remap[num]) {
+        remap[num] = String(Math.min(next, sources.length));
+        next += 1;
+      }
+      return `[${remap[num]}]`;
+    });
+
+    // Collapse directe herhalingen zoals "[1] [2] [2]" → "[2]"
+    cleanText = cleanText.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
+      const last = (m.match(/\d+/g) || []).pop();
+      return ` [${last}]`;
+    });
+  } else {
+    // geen bronnen → haal losse citatie-tags weg
+    cleanText = cleanText.replace(/\s*\[(\d+)\]/g, '');
   }
 
-  // 6) Markdown → HTML (koppen, lijsten, bold/italic, [n] → badge)
   const html = renderMarkdown(cleanText);
   return { html, sources };
+}
+
+// Eenvoudige Markdown renderer die jouw regels afdekt:
+// - Koppen: # → h1, ## → h2
+// - Vet/italic: **, *
+// - Lijsten: "- " → <ul><li>, "1. " → <ol><li>
+// - Inline [n] → .citation-ref spans
+function renderMarkdown(md) {
+  const esc = s => {
+    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  };
+  let out = esc(md);
+
+  // Koppen (###### t/m #)
+  out = out.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+  out = out.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+  out = out.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+  out = out.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  out = out.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+  out = out.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+  // Vet / cursief
+  out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+  // Lijsten
+  // Genummerd
+  out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
+    const items = m.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
+    return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+  });
+  // Bullets
+  out = out.replace(/(?:^|\n)(-\s.+(?:\n-\s.+)*)/g, (m) => {
+    const items = m.trim().split(/\n/).map(l => l.replace(/^-\s+/, '').trim());
+    return '\n<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+  });
+
+  // Citaties [n] → badge spans
+  out = out.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
+
+  // Paragraaf-breaks
+  out = out.replace(/\n{2,}/g, '</p><p>');
+  out = '<p>' + out + '</p>';
+  out = out.replace(/<p>\s*<\/p>/g, '');
+  return out;
 }
 function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
 }
-  function renderCitationsBlock(sources){
-  if (!sources || sources.length === 0){
+  function renderCitationsBlock(sources) {
+  if (!sources || sources.length === 0) {
     return `
       <div class="citations">
         <div class="citations-header"><strong>Bronnen:</strong></div>
         <div class="citation-list"><em>Geen</em></div>
-      </div>`;
+      </div>
+    `;
   }
-
   const items = sources.map(s => {
     const open  = s.url
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
     const close = s.url ? `</a>` : `</div>`;
-      return `
-        ${open}
-          <div class="citation-content">
-            <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
-          </div>
-        ${close}
-      `;
+    return `
+      ${open}
+        <span class="citation-ref" data-citation="${s.number}" title="Klik voor bron">${s.number}</span>
+        <div class="citation-content">
+          <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
+        </div>
+      ${close}
+    `;
   }).join('');
-
   return `
     <div class="citations">
       <div class="citations-header"><strong>Bronnen:</strong></div>
       <div class="citation-list">${items}</div>
-    </div>`;
+    </div>
+  `;
 }
 
   // ---------- UI Functions ----------
