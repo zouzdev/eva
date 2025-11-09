@@ -735,12 +735,13 @@ function escapeHtml(text) {
       ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
       : `<div class="citation-item" data-source="${s.number}">`;
     const close = s.url ? `</a>` : `</div>`;
-    return `
-      ${open}
-        <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
-        </div>
-      ${close>`;
+      return `
+        ${open}
+          <div class="citation-content">
+            <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
+          </div>
+        ${close}
+      `;
   }).join('');
 
   return `
