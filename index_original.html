@@ -512,14 +512,14 @@
         </section>
 
         <section class="cards" id="cards">
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Request Time Off</h3><p>Process, approvals, and lead times.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Payslip & Salary</h3><p>Portal access, payday, and common issues.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Expenses</h3><p>Step-by-step submission and processing times.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>IT: Password Reset</h3><p>Self-service reset or via the service desk.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Sick Leave</h3><p>Who to notify, by what time, and next steps.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Travel Costs</h3><p>Public transport, mileage, and claiming.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Policies & GDPR</h3><p>Handbook, remote work policy, and security.</p></article>
-          <article class="card"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Parental Leave</h3><p>Notice periods and required documents.</p></article>
+          <article class="card" data-key="timeoff"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Request Time Off</h3><p>Process, approvals, and lead times.</p></article>
+          <article class="card" data-key="payslip"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Payslip & Salary</h3><p>Portal access, payday, and common issues.</p></article>
+          <article class="card" data-key="expenses"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Expenses</h3><p>Step-by-step submission and processing times.</p></article>
+          <article class="card" data-key="reset"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>IT: Password Reset</h3><p>Self-service reset or via the service desk.</p></article>
+          <article class="card" data-key="sickleave"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Sick Leave</h3><p>Who to notify, by what time, and next steps.</p></article>
+          <article class="card" data-key="travel"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Travel Costs</h3><p>Public transport, mileage, and claiming.</p></article>
+          <article class="card" data-key="policies"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Policies & GDPR</h3><p>Handbook, remote work policy, and security.</p></article>
+          <article class="card" data-key="parental"><div class="arrow"><svg viewBox="0 0 24 24" fill="none"><path d="M8 16l6-4-6-4" stroke="#0f1117" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>Parental Leave</h3><p>Notice periods and required documents.</p></article>
         </section>
 
         <div class="chatlog" id="chatlog" aria-live="polite"></div>
@@ -1015,17 +1015,47 @@ function parseMessageWithCitations(text) {
     renderHistory();
   }
 
+  // Lange prompts per kaart
+const LONG_PROMPTS = {
+  timeoff: `How do I request time off and what is the approval timeline?`,
+
+  payslip: `Where can I find my payslip and when is payday?`,
+
+  expenses: `How do I submit an expense claim and which receipts are required?`,
+
+  reset: `How do I reset my password and regain access to email?`,
+
+  sickleave: `How do I report sick and what are the availability rules?`,
+
+  travel: `How does travel reimbursement work and what is the mileage rate?`,
+
+  policies: `Where can I find the employee handbook / data privacy policy (GDPR)?`,
+
+  parental: `How do I request parental or maternity leave and what are the timelines?`
+};
+
+// Prefill helper (optioneel autoSend)
+function prefillFromCard(card, { autoSend = false } = {}) {
+  const key = card.getAttribute('data-key');
+  const prompt =
+    card.getAttribute('data-prompt') ||     // HTML override
+    (key ? LONG_PROMPTS[key] : '') ||       // bibliotheek
+    (card.querySelector('h3')?.textContent?.trim() || '');
+
+  promptInput.value = prompt;
+  const len = prompt.length;
+  promptInput.focus();
+  promptInput.setSelectionRange(len, len);
+
+  if (autoSend && prompt.trim() && typeof sendMessage === 'function') {
+    sendMessage();
+  }
+}
+
   cards.forEach(card => {
-    card.addEventListener('click', () => {
-      const prompt =
-        card.getAttribute('data-prompt') ||
-        (card.querySelector('h3')?.textContent?.trim() || '');
-      promptInput.value = prompt;
-      const len = prompt.length;
-      promptInput.focus();
-      promptInput.setSelectionRange(len, len);
-    });
+    card.addEventListener('click', () => prefillFromCard(card /*, { autoSend: true }*/));
   });
+
 
   // Modal clear
   let lastFocusedEl = null;
