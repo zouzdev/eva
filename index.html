@@ -627,106 +627,128 @@
   }
 
 function parseMessageWithCitations(text) {
-  // --- 1) Splits hoofdtekst vs. bronnen-sectie ---
+  // --- 1) Split hoofdtekst vs. bronnen-sectie ---
   const lines = text.split(/\r?\n/);
-  const headingIdx = lines.findIndex(l =>
+  const hIdx = lines.findIndex(l =>
     /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim())
   );
 
-  let mainText = text;
-  let sourcesText = '';
-
-  if (headingIdx !== -1) {
-    const headingLine = lines[headingIdx];
-    mainText = lines.slice(0, headingIdx).join('\n').trimEnd();
-
-    const afterHeaderSameLine = headingLine.replace(
+  let mainText = text, sourcesText = '';
+  if (hIdx !== -1) {
+    const hLine = lines[hIdx];
+    mainText = lines.slice(0, hIdx).join('\n').trimEnd();
+    const restOnLine = hLine.replace(
       /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, ''
     );
-    sourcesText = [afterHeaderSameLine, ...lines.slice(headingIdx + 1)]
-      .join('\n')
-      .trim();
+    sourcesText = [restOnLine, ...lines.slice(hIdx + 1)].join('\n').trim();
   }
 
-  // --- 2) Parse + de-dup bronnen ---
+  // --- 2) Parse + dedup bronnen ---
   let parsed = [];
   if (sourcesText) {
-    parsed = sourcesText
-      .split('\n')
-      .map(s => s.trim())
-      .filter(Boolean)
+    parsed = sourcesText.split('\n')
+      .map(s => s.trim()).filter(Boolean)
       .map((line, i) => {
         let clean = line.replace(/^-\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
-        const urlMatch = clean.match(/(https?:\/\/[^\s]+)$/i);
+        const urlMatch = clean.match(/(https?:\/\/\S+)$/i);
         const url = urlMatch ? urlMatch[1] : '';
         if (url) clean = clean.replace(url, '').trim();
-        const title = clean.split('|')[0].trim() || ('Document ' + (i + 1));
+        const title = (clean.split('|')[0] || '').trim() || ('Document ' + (i+1));
         return { title, url };
       });
   }
   const seen = new Set();
   const sources = [];
-  parsed.forEach(s => {
-    const key = (s.title.toLowerCase() + '|' + (s.url || '')).trim();
+  for (const s of parsed) {
+    const key = (s.title.toLowerCase() + '|' + (s.url||'')).trim();
     if (!seen.has(key)) {
       seen.add(key);
-      sources.push({ number: String(sources.length + 1), title: s.title, url: s.url || '' });
+      sources.push({ number: '', title: s.title, url: s.url||'' }); // nummer later toewijzen
     }
-  });
+  }
 
-  // --- 3) Markers → [n] (alleen als er bronnen zijn) ---
-const markerRe = /【[^】]*source】/g;
-let cleanText = mainText;
-const hasExplicitRefs = /\[\d+\]/.test(mainText);
+  // --- 3) Markers behandelen ---
+  const markerRe = /【[^】]*source】/g;
+  const hasExplicitRefs = /\[\d+\]/.test(mainText);
+  let cleanText = mainText;
 
-if (sources.length === 0) {
-  cleanText = cleanText.replace(markerRe, '');
-} else if (hasExplicitRefs) {
-  // Er zijn al [n] in de tekst → markers verwijderen om dubbele refs te voorkomen
-  cleanText = cleanText.replace(markerRe, '');
-} else {
-  // Geen [n] aanwezig → markers nummeren
-  let i = 0;
-  cleanText = cleanText.replace(markerRe, () => {
-    i += 1;
-    return ` [${Math.min(i, sources.length)}]`;
-  });
-}
-
-  // --- 3b) Documenttitels in hoofdtekst → [n] ---
-function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-sources.forEach((s, idx) => {
-  const n = idx + 1;
-  const t = escRx(s.title);
-  if (!t) return;
-  [
-    new RegExp(`“\\s*${t}\\s*”`, 'g'),
-    new RegExp(`"\\s*${t}\\s*"`, 'g'),
-    new RegExp(`'\\s*${t}\\s*'`, 'g'),
-    new RegExp(`\\b${t}\\b`, 'g'),
-  ].forEach(rx => { cleanText = cleanText.replace(rx, ` [${n}]`); });
-});
-
-
-
-  // --- 4) Hernummer bestaande [getal] → 1..k en dedup runs ---
-  if (sources.length > 0) {
-    let next = 1;
-    const remap = {};
-    cleanText = cleanText.replace(/\[(\d+)\]/g, (_, num) => {
-      if (!remap[num]) {
-        remap[num] = String(Math.min(next, sources.length));
-        next += 1;
-      }
-      return `[${remap[num]}]`;
+  if (sources.length === 0) {
+    cleanText = cleanText.replace(markerRe, '');
+  } else if (hasExplicitRefs) {
+    // al [n] aanwezig → markers weg, geen extra nummers toevoegen
+    cleanText = cleanText.replace(markerRe, '');
+  } else {
+    // markers → tijdelijke placeholder, we hernummeren later op volgorde
+    let i = 0;
+    cleanText = cleanText.replace(markerRe, () => {
+      i += 1;
+      return ` [${i}]`;
     });
+  }
 
-    // Collapse duplicate consecutive citations like "[1] [2] [2]" → "[2]"
-  cleanText = cleanText.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
-    const last = (m.match(/\d+/g) || []).pop();
+  // --- 4) Documenttitels in hoofdtekst → [n] (exacte titelmatch, met of zonder quotes) ---
+  const escRx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  sources.forEach((s, idx) => {
+    const n = idx + 1;
+    const t = escRx(s.title);
+    if (!t) return;
+    [
+      new RegExp(`“\\s*${t}\\s*”`, 'g'),
+      new RegExp(`"\\s*${t}\\s*"`, 'g'),
+      new RegExp(`'\\s*${t}\\s*'`, 'g'),
+      new RegExp(`\\b${t}\\b`, 'g')
+    ].forEach(rx => { cleanText = cleanText.replace(rx, ` [${n}]`); });
+  });
+
+  // --- 5) Hernummer op basis van EERSTE VOORKOMEN ---
+  // Maak de reeks unieke verwijzingen in volgorde van verschijnen
+  const order = [];
+  cleanText.replace(/\[(\d+)\]/g, (_, d) => {
+    if (!order.includes(d)) order.push(d);
+    return _;
+  });
+
+  // Bouw een mapping: *volgorde in tekst* → 1..k
+  const mapByAppearance = {};
+  order.forEach((orig, i) => { mapByAppearance[orig] = String(i + 1); });
+
+  // Pas mapping toe op de tekst
+  cleanText = cleanText.replace(/\[(\d+)\]/g, (_, d) => `[${mapByAppearance[d] || d}]`);
+
+  // --- 6) Herordeneer bronnen zodat [1] correspondeert met de EERSTE verwijzing ---
+  // Als er geen referenties in de tekst staan, behoud lijst
+  if (order.length > 0) {
+    // huidige indexen 1..sources.length
+    const oldIndex = i => String(i + 1);
+    const newOrder = [];
+
+    // probeer bronnen te koppelen aan oude nummers uit de tekst (als die al opliepen)
+    // zo niet, val terug op originele volgorde
+    // In de praktijk is dit voldoende omdat titels/markers al zijn omgezet
+    const byIdx = sources.map((s, i) => ({...s, _old: oldIndex(i)}));
+
+    order.forEach(num => {
+      const hit = byIdx.find(x => x._old === num && !x._taken);
+      if (hit) { hit._taken = true; newOrder.push(hit); }
+    });
+    // voeg resterende bronnen toe
+    byIdx.forEach(x => { if (!x._taken) newOrder.push(x); });
+
+    // schrijf nummers 1..k
+    newOrder.forEach((s, i) => s.number = String(i + 1));
+    // vervang
+    sources.length = 0;
+    newOrder.forEach(s => sources.push(s));
+  } else {
+    // geen refs in tekst: 1..k op originele volgorde
+    sources.forEach((s, i) => s.number = String(i + 1));
+  }
+
+  // --- 7) Dubbele aaneengesloten badges comprimeren (… [1] [1] → [1]) ---
+  cleanText = cleanText.replace(/(?:\s*\[(\d+)\]){2,}/g, (_m) => {
+    const last = (_m.match(/\[(\d+)\]/g) || []).pop().match(/\d+/)[0];
     return ` [${last}]`;
   });
-}
 
   const html = renderMarkdown(cleanText);
   return { html, sources };
