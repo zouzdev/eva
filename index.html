@@ -627,131 +627,120 @@
   }
 
 function parseMessageWithCitations(text) {
-  // --- 1) Split hoofdtekst vs. bronnen-sectie ---
+  // 1) Split hoofdtekst vs bronnen
   const lines = text.split(/\r?\n/);
-  const hIdx = lines.findIndex(l =>
-    /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim())
-  );
-
+  const hIdx = lines.findIndex(l => /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim()));
   let mainText = text, sourcesText = '';
   if (hIdx !== -1) {
     const hLine = lines[hIdx];
     mainText = lines.slice(0, hIdx).join('\n').trimEnd();
-    const restOnLine = hLine.replace(
-      /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, ''
-    );
-    sourcesText = [restOnLine, ...lines.slice(hIdx + 1)].join('\n').trim();
+    const rest = hLine.replace(/^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, '');
+    sourcesText = [rest, ...lines.slice(hIdx+1)].join('\n').trim();
   }
 
-  // --- 2) Parse + dedup bronnen ---
+  // 2) Parse + dedup bronnen (bewaar originele volgorde)
   let parsed = [];
-  if (sourcesText) {
-    parsed = sourcesText.split('\n')
-      .map(s => s.trim()).filter(Boolean)
-      .map((line, i) => {
-        let clean = line.replace(/^-\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
-        const urlMatch = clean.match(/(https?:\/\/\S+)$/i);
-        const url = urlMatch ? urlMatch[1] : '';
-        if (url) clean = clean.replace(url, '').trim();
-        const title = (clean.split('|')[0] || '').trim() || ('Document ' + (i+1));
-        return { title, url };
-      });
+  if (sourcesText){
+    parsed = sourcesText.split('\n').map(s=>s.trim()).filter(Boolean).map((line,i)=>{
+      let clean = line.replace(/^-\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
+      const urlMatch = clean.match(/(https?:\/\/\S+)$/i);
+      const url = urlMatch ? urlMatch[1] : '';
+      if (url) clean = clean.replace(url,'').trim();
+      const title = (clean.split('|')[0] || '').trim() || ('Document ' + (i+1));
+      return { title, url };
+    });
   }
   const seen = new Set();
   const sources = [];
-  for (const s of parsed) {
+  for (const s of parsed){
     const key = (s.title.toLowerCase() + '|' + (s.url||'')).trim();
-    if (!seen.has(key)) {
-      seen.add(key);
-      sources.push({ number: '', title: s.title, url: s.url||'' }); // nummer later toewijzen
-    }
+    if (!seen.has(key)) { seen.add(key); sources.push({ title: s.title, url: s.url||'' }); }
   }
+  const K = sources.length;
 
-  // --- 3) Markers behandelen ---
-  const markerRe = /【[^】]*source】/g;
-  const hasExplicitRefs = /\[\d+\]/.test(mainText);
-  let cleanText = mainText;
-
-  if (sources.length === 0) {
-    cleanText = cleanText.replace(markerRe, '');
-  } else if (hasExplicitRefs) {
-    // al [n] aanwezig → markers weg, geen extra nummers toevoegen
-    cleanText = cleanText.replace(markerRe, '');
-  } else {
-    // markers → tijdelijke placeholder, we hernummeren later op volgorde
-    let i = 0;
-    cleanText = cleanText.replace(markerRe, () => {
-      i += 1;
-      return ` [${i}]`;
-    });
-  }
-
-  // --- 4) Documenttitels in hoofdtekst → [n] (exacte titelmatch, met of zonder quotes) ---
+  // Helper
   const escRx = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // 3) Zet ALLE citaties in de hoofdtekst om naar tokens met bron-index
+  //    Tokenvorm: [[CITE:i]]
+  let clean = mainText;
+  const tokens = []; // {posStart, posEnd} niet nodig; we werken met string-replace
+
+  // a) Titelverwijzingen → tokens
+  //    (eerst, zodat "[n]" in titels ons niet hindert)
   sources.forEach((s, idx) => {
-    const n = idx + 1;
+    if (!s.title) return;
     const t = escRx(s.title);
-    if (!t) return;
-    [
-      new RegExp(`“\\s*${t}\\s*”`, 'g'),
-      new RegExp(`"\\s*${t}\\s*"`, 'g'),
-      new RegExp(`'\\s*${t}\\s*'`, 'g'),
-      new RegExp(`\\b${t}\\b`, 'g')
-    ].forEach(rx => { cleanText = cleanText.replace(rx, ` [${n}]`); });
+    const patterns = [
+      new RegExp(`“\\s*${t}\\s*”`,'g'),
+      new RegExp(`"\\s*${t}\\s*"`,'g'),
+      new RegExp(`'\\s*${t}\\s*'`,'g'),
+      new RegExp(`\\b${t}\\b`,'g')
+    ];
+    patterns.forEach(rx => {
+      clean = clean.replace(rx, () => `[[CITE:${idx}]]`);
+    });
   });
 
-  // --- 5) Hernummer op basis van EERSTE VOORKOMEN ---
-  // Maak de reeks unieke verwijzingen in volgorde van verschijnen
-  const order = [];
-  cleanText.replace(/\[(\d+)\]/g, (_, d) => {
-    if (!order.includes(d)) order.push(d);
+  // b) Bestaande [n] → tokens met index n-1 (geclamped)
+  clean = clean.replace(/\[(\d+)\]/g, (_, d) => {
+    let idx = Math.max(0, Math.min(K-1, parseInt(d,10)-1));
+    if (!isFinite(idx)) return ''; // safety
+    return K > 0 ? `[[CITE:${idx}]]` : ''; // geen bronnen → verwijder
+  });
+
+  // c) Azure markers → tokens in oplopende bronvolgorde 0..K-1
+  if (K > 0){
+    let nextIdx = 0;
+    clean = clean.replace(/【[^】]*source】/g, () => {
+      const i = Math.min(nextIdx, K-1);
+      nextIdx = Math.min(nextIdx + 1, K-1);
+      return `[[CITE:${i}]]`;
+    });
+  } else {
+    clean = clean.replace(/【[^】]*source】/g, '');
+  }
+
+  // 4) Bepaal encounter-volgorde van unieke bron-indexen
+  const encountered = [];
+  clean.replace(/\[\[CITE:(\d+)\]\]/g, (_, i) => {
+    const ii = parseInt(i,10);
+    if (!encountered.includes(ii)) encountered.push(ii);
     return _;
   });
 
-  // Bouw een mapping: *volgorde in tekst* → 1..k
-  const mapByAppearance = {};
-  order.forEach((orig, i) => { mapByAppearance[orig] = String(i + 1); });
+  // 5) Maak mapping: bron-index -> nieuw nummer (1..m) volgens encounter-volgorde
+  const map = {};
+  encountered.forEach((ii, j) => { map[ii] = String(j+1); });
 
-  // Pas mapping toe op de tekst
-  cleanText = cleanText.replace(/\[(\d+)\]/g, (_, d) => `[${mapByAppearance[d] || d}]`);
+  // 6) Vervang tokens door nieuwe [n]
+  clean = clean.replace(/\[\[CITE:(\d+)\]\]/g, (_, i) => {
+    const ii = parseInt(i,10);
+    const n = map.hasOwnProperty(ii) ? map[ii] : '';
+    return n ? ` [${n}]` : '';
+  });
 
-  // --- 6) Herordeneer bronnen zodat [1] correspondeert met de EERSTE verwijzing ---
-  // Als er geen referenties in de tekst staan, behoud lijst
-  if (order.length > 0) {
-    // huidige indexen 1..sources.length
-    const oldIndex = i => String(i + 1);
-    const newOrder = [];
-
-    // probeer bronnen te koppelen aan oude nummers uit de tekst (als die al opliepen)
-    // zo niet, val terug op originele volgorde
-    // In de praktijk is dit voldoende omdat titels/markers al zijn omgezet
-    const byIdx = sources.map((s, i) => ({...s, _old: oldIndex(i)}));
-
-    order.forEach(num => {
-      const hit = byIdx.find(x => x._old === num && !x._taken);
-      if (hit) { hit._taken = true; newOrder.push(hit); }
-    });
-    // voeg resterende bronnen toe
-    byIdx.forEach(x => { if (!x._taken) newOrder.push(x); });
-
-    // schrijf nummers 1..k
-    newOrder.forEach((s, i) => s.number = String(i + 1));
-    // vervang
-    sources.length = 0;
-    newOrder.forEach(s => sources.push(s));
+  // 7) Herordeneer bronnen-lijst volgens encounter-volgorde; nummer ze 1..m
+  let finalSources = [];
+  if (encountered.length > 0){
+    finalSources = encountered.map((ii, j) => ({
+      number: String(j+1),
+      title: sources[ii]?.title || `Document ${j+1}`,
+      url: sources[ii]?.url || ''
+    }));
   } else {
-    // geen refs in tekst: 1..k op originele volgorde
-    sources.forEach((s, i) => s.number = String(i + 1));
+    // geen citaties in tekst → behoud originele volgorde 1..K
+    finalSources = sources.map((s, i) => ({ number:String(i+1), title:s.title, url:s.url }));
   }
 
-  // --- 7) Dubbele aaneengesloten badges comprimeren (… [1] [1] → [1]) ---
-  cleanText = cleanText.replace(/(?:\s*\[(\d+)\]){2,}/g, (_m) => {
-    const last = (_m.match(/\[(\d+)\]/g) || []).pop().match(/\d+/)[0];
+  // 8) Dubbele aaneengesloten badges comprimeren en opschonen
+  clean = clean.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
+    const last = (m.match(/\d+/g) || []).pop();
     return ` [${last}]`;
   });
 
-  const html = renderMarkdown(cleanText);
-  return { html, sources };
+  const html = renderMarkdown(clean);
+  return { html, sources: finalSources };
 }
 
 // Eenvoudige Markdown renderer die jouw regels afdekt:
