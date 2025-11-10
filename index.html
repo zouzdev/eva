@@ -249,10 +249,11 @@
     border-radius: 4px;
     font-size: 11px;
     font-weight: 700;
-    margin: 0 2px;
+    margin-left: 4px;
+    margin-right: 2px;
     cursor: pointer;
     transition: all 0.2s ease;
-    vertical-align: middle;
+    vertical-align: baseline;
   }
 
   .citation-ref:hover {
@@ -467,6 +468,62 @@
     font-weight: 600;
     letter-spacing: 0.3px;
   }
+
+  /* -----------------------------------------
+   ✦ BETERE VERTICALE SPACING
+----------------------------------------- */
+
+/* Algemene paragrafen */
+.bubble p {
+  margin: 0 0 10px 0;
+  line-height: 1.55;
+}
+
+/* Laatste paragraaf binnen bubble → geen extra ruimte */
+.bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings spacing */
+.bubble h1,
+.bubble h2,
+.bubble h3,
+.bubble h4 {
+  margin-top: 18px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.bubble h1:first-child,
+.bubble h2:first-child,
+.bubble h3:first-child,
+.bubble h4:first-child {
+  margin-top: 0;
+}
+
+/* Lijsten */
+.bubble ul,
+.bubble ol {
+  margin: 4px 0 12px 20px;
+  padding-left: 14px;
+}
+
+.bubble li {
+  margin: 4px 0;
+  line-height: 1.45;
+}
+
+/* Tussen paragrafen en lijsten netjes */
+.bubble p + ul,
+.bubble p + ol {
+  margin-top: -2px;   /* iets optisch compacter */
+}
+
+.bubble ul + p,
+.bubble ol + p {
+  margin-top: 10px;
+}
+
 </style>
 </head>
 
