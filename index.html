@@ -675,18 +675,39 @@ function parseMessageWithCitations(text) {
   });
 
   // --- 3) Markers → [n] (alleen als er bronnen zijn) ---
-  const markerRe = /【[^】]*source】/g;
-  let cleanText = mainText;
-  if (sources.length > 0) {
-    let i = 0;
-    cleanText = cleanText.replace(markerRe, () => {
-      i += 1;
-      const n = Math.min(i, sources.length);
-      return ` [${n}]`;
-    });
-  } else {
-    cleanText = cleanText.replace(markerRe, '');
-  }
+const markerRe = /【[^】]*source】/g;
+let cleanText = mainText;
+const hasExplicitRefs = /\[\d+\]/.test(mainText);
+
+if (sources.length === 0) {
+  cleanText = cleanText.replace(markerRe, '');
+} else if (hasExplicitRefs) {
+  // Er zijn al [n] in de tekst → markers verwijderen om dubbele refs te voorkomen
+  cleanText = cleanText.replace(markerRe, '');
+} else {
+  // Geen [n] aanwezig → markers nummeren
+  let i = 0;
+  cleanText = cleanText.replace(markerRe, () => {
+    i += 1;
+    return ` [${Math.min(i, sources.length)}]`;
+  });
+}
+
+  // --- 3b) Documenttitels in hoofdtekst → [n] ---
+function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+sources.forEach((s, idx) => {
+  const n = idx + 1;
+  const t = escRx(s.title);
+  if (!t) return;
+  [
+    new RegExp(`“\\s*${t}\\s*”`, 'g'),
+    new RegExp(`"\\s*${t}\\s*"`, 'g'),
+    new RegExp(`'\\s*${t}\\s*'`, 'g'),
+    new RegExp(`\\b${t}\\b`, 'g'),
+  ].forEach(rx => { cleanText = cleanText.replace(rx, ` [${n}]`); });
+});
+
+
 
   // --- 4) Hernummer bestaande [getal] → 1..k en dedup runs ---
   if (sources.length > 0) {
