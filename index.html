@@ -700,15 +700,12 @@ function parseMessageWithCitations(text) {
       return `[${remap[num]}]`;
     });
 
-    // Collapse directe herhalingen zoals "[1] [2] [2]" → "[2]"
-    cleanText = cleanText.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
-      const last = (m.match(/\d+/g) || []).pop();
-      return ` [${last}]`;
-    });
-  } else {
-    // geen bronnen → haal losse citatie-tags weg
-    cleanText = cleanText.replace(/\s*\[(\d+)\]/g, '');
-  }
+    // Collapse duplicate consecutive citations like "[1] [2] [2]" → "[2]"
+  cleanText = cleanText.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
+    const last = (m.match(/\d+/g) || []).pop();
+    return ` [${last}]`;
+  });
+}
 
   const html = renderMarkdown(cleanText);
   return { html, sources };
