@@ -6,10 +6,10 @@
 <title>Eva</title>
 <link rel="icon" type="image/png" href="Paars.png">
 
-<!-- Google Fonts: Red Hat Display -->
+<!-- Google Fonts: DM Sans & Noto Sans -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
 <style>
   :root{
@@ -23,8 +23,9 @@
     --shadow-card: 0 8px 24px rgba(8,15,39,.06);
     --radius-card: 14px;
 
-    --font: "Red Hat Display", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
-    --w-base: 300;
+    /* Nieuwe font-stack */
+    --font: "DM Sans", "Noto Sans", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --w-base: 400;
     --w-bold: 700;
 
     /* Sidebar */
@@ -53,6 +54,22 @@
 
     /* 20% kleiner */
     --ui-scale: 0.8;
+  }
+
+  /* Optionele utility classes */
+  .font-dm-sans {
+    font-family: "DM Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+  }
+
+  .font-noto-sans {
+    font-family: "Noto Sans", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+    font-variation-settings: "wdth" 100;
   }
 
   .citations {
@@ -467,6 +484,62 @@
     font-weight: 600;
     letter-spacing: 0.3px;
   }
+
+  /* -----------------------------------------
+   ✦ BETERE VERTICALE SPACING
+----------------------------------------- */
+
+/* Algemene paragrafen */
+.bubble p {
+  margin: 0 0 10px 0;
+  line-height: 1.55;
+}
+
+/* Laatste paragraaf binnen bubble → geen extra ruimte */
+.bubble p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings spacing */
+.bubble h1,
+.bubble h2,
+.bubble h3,
+.bubble h4 {
+  margin-top: 18px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.bubble h1:first-child,
+.bubble h2:first-child,
+.bubble h3:first-child,
+.bubble h4:first-child {
+  margin-top: 0;
+}
+
+/* Lijsten */
+.bubble ul,
+.bubble ol {
+  margin: 4px 0 12px 20px;
+  padding-left: 14px;
+}
+
+.bubble li {
+  margin: 4px 0;
+  line-height: 1.45;
+}
+
+/* Tussen paragrafen en lijsten netjes */
+.bubble p + ul,
+.bubble p + ol {
+  margin-top: -2px;   /* iets optisch compacter */
+}
+
+.bubble ul + p,
+.bubble ol + p {
+  margin-top: 10px;
+}
+
 </style>
 </head>
 
@@ -1272,53 +1345,7 @@ function prefillFromCard(card, { autoSend = false } = {}) {
     const CHARS_PER_FRAME = 3; // Higher = faster typing (3 chars at once is fast but smooth)
     const FRAME_DELAY = 16; // ~60fps
     
-    // Create temporary div to parse HTML properly
-    const temp = document.createElement('div');
-    temp.innerHTML = html;
-    
-    // Extract text nodes in order
-    const textNodes = [];
-    const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    while (node = walker.nextNode()) {
-      if (node.textContent.trim()) {
-        textNodes.push(node);
-      }
-    }
-    
-    // Flatten to characters with their parent elements
-    const chars = [];
-    temp.childNodes.forEach(function processNode(node) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent;
-        for (let i = 0; i < text.length; i++) {
-          chars.push({
-            char: text[i],
-            parent: node.parentElement || temp,
-            isText: true
-          });
-        }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        // Store opening tag
-        chars.push({
-          element: node.cloneNode(false),
-          isTag: true,
-          isOpening: true
-        });
-        
-        // Process children
-        node.childNodes.forEach(processNode);
-        
-        // Store closing tag
-        chars.push({
-          tagName: node.tagName,
-          isTag: true,
-          isClosing: true
-        });
-      }
-    });
-    
-    // Simpler approach: type HTML character by character
+    // Simpler: type HTML string directly
     let currentIndex = 0;
     const cursor = bubble.querySelector('.typing-cursor');
     
@@ -1340,16 +1367,12 @@ function prefillFromCard(card, { autoSend = false } = {}) {
         return;
       }
       
-      // Type multiple characters at once for speed
       const endIndex = Math.min(currentIndex + CHARS_PER_FRAME, html.length);
       const chunk = html.substring(0, endIndex);
-      
-      // Update display
       bubble.innerHTML = chunk + '<span class="typing-cursor"></span>';
       
       currentIndex = endIndex;
       
-      // Auto-scroll
       if (chatlog.scrollHeight - chatlog.scrollTop - chatlog.clientHeight < 100) {
         chatlog.scrollTop = chatlog.scrollHeight;
       }
