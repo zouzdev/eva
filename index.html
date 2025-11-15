@@ -23,7 +23,7 @@
     --shadow-card: 0 8px 24px rgba(8,15,39,.06);
     --radius-card: 14px;
 
-    /* Nieuwe font-stack */
+    /* Font-stack */
     --font: "DM Sans", "Noto Sans", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, sans-serif;
     --w-base: 400;
     --w-bold: 700;
@@ -72,26 +72,6 @@
     font-variation-settings: "wdth" 100;
   }
 
-  .citations {
-  margin-top: 12px;
-  background: var(--citation-bg);
-  border: 1px solid rgba(124, 58, 237, 0.15);
-  border-radius: 12px;
-  padding: 12px 14px;
-}
-
-.citations-header {
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.citation-item.highlight {
-  background: var(--citation-hover);
-  border-color: var(--brand);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
-}
-
   * { box-sizing: border-box; }
   html,body { height: 100%; }
   body{
@@ -105,8 +85,8 @@
 
   body { scrollbar-width: none; }
   body::-webkit-scrollbar { width: 0; height: 0; }
-
   html, body { overflow-x: hidden; }
+
   a{ color: inherit; text-decoration: none; }
   .hidden { display: none !important; }
 
@@ -198,15 +178,14 @@
     border: 1px solid rgba(124,58,237,.12);
     border-radius: 10px;
     text-decoration: none;
-}
+  }
 
-  /* zelfde highlight voor <a.citation-link> als voor .citation-item */
-.citation-link.highlight{
-  background: var(--citation-hover);
-  border-color: var(--brand);
-  transform: translateX(3px);
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
-}
+  .citation-link.highlight{
+    background: var(--citation-hover);
+    border-color: var(--brand);
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
+  }
 
   .hero{ margin: 56px auto 28px; text-align: center; max-width: 860px; padding:0 20px 20px 0; }
   .hero h1{ margin:0 0 10px; font-size: clamp(30px, 5.2vw, 44px); font-weight:800; letter-spacing:.2px; color:#826FE8; position:relative; display:inline-block; overflow:hidden; }
@@ -230,10 +209,30 @@
   .msg.assistant{ justify-content:flex-start; }
   .msg.user{ justify-content:flex-end; }
   .msg .bubble-wrap{ max-width: 72%; display: inline-flex; flex-direction: column; gap: 8px; }
-  .bubble{ padding: 14px 16px; border-radius: 18px; line-height: 1.6; font-weight: var(--w-chat); font-size: 15px; position: relative; }
-  .msg.user .bubble{ background: #fff, var(--user-grad-b)); color: var(--user-grad-b); border: none; box-shadow: var(--user-shadow);}
-  .msg.assistant .bubble{ background: var(--assistant-bg); color: #0f1117; box-shadow: var(--assistant-shadow);}
-  
+
+  .bubble{
+    padding: 14px 16px;
+    border-radius: 18px;
+    line-height: 1.6;
+    font-weight: var(--w-chat);
+    font-size: 15px;
+    position: relative;
+  }
+
+  .msg.user .bubble{
+    background: linear-gradient(180deg, var(--user-grad-a), var(--user-grad-b));
+    color: #fff;
+    border:none;
+    box-shadow: var(--user-shadow);
+  }
+
+  .msg.assistant .bubble{
+    background: var(--assistant-bg);
+    border:1px solid var(--assistant-border);
+    color:#0f1117;
+    box-shadow: var(--assistant-shadow);
+  }
+
   /* Typewriter cursor */
   .typing-cursor {
     display: inline-block;
@@ -244,12 +243,19 @@
     animation: blink 1s infinite;
     vertical-align: text-bottom;
   }
-  
   @keyframes blink {
     0%, 49% { opacity: 1; }
     50%, 100% { opacity: 0; }
   }
-  .meta{ font-size: 12px; color: var(--time); display:flex; align-items:center; gap:8px; padding: 0 4px 0 6px; }
+
+  .meta{
+    font-size: 12px;
+    color: var(--time);
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding: 0 4px 0 6px;
+  }
   .tick{ display:inline-flex; align-items:center; gap:4px; color:#e8e8ff; }
   .tick svg{ width:14px; height:14px; display:block; }
 
@@ -271,7 +277,6 @@
     transition: all 0.2s ease;
     vertical-align: middle;
   }
-
   .citation-ref:hover {
     transform: scale(1.15);
     box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
@@ -279,12 +284,12 @@
 
   /* Citations Container */
   .citations {
+    margin-top: 12px;
     background: var(--citation-bg);
     border: 1px solid rgba(124, 58, 237, 0.15);
     border-radius: 12px;
     padding: 12px 14px;
   }
-
   .citations-header {
     font-size: 12px;
     font-weight: 700;
@@ -296,19 +301,16 @@
     align-items: center;
     gap: 6px;
   }
-
   .citations-header svg {
     width: 14px;
     height: 14px;
     opacity: 0.6;
   }
-
   .citation-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
-
   .citation-item {
     display: flex;
     align-items: center;
@@ -322,24 +324,21 @@
     transition: all 0.2s ease;
     cursor: pointer;
   }
-
   .citation-item:hover {
     background: var(--citation-hover);
     border-color: var(--brand);
     transform: translateX(3px);
     box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
   }
-
   .citation-item.highlight {
     background: var(--citation-hover);
     border-color: var(--brand);
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
   }
-
   .citation-content {
     flex: 1;
     min-width: 0;
   }
-
   .citation-title {
     font-size: 14px;
     font-weight: 600;
@@ -348,26 +347,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .citation-source {
-    font-size: 12px;
-    color: #6a6f7a;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .citation-icon {
-    width: 16px;
-    height: 16px;
-    opacity: 0.4;
-    transition: opacity 0.2s ease;
-    flex-shrink: 0;
-  }
-
-  .citation-item:hover .citation-icon {
-    opacity: 0.8;
   }
 
   .composer{
@@ -402,10 +381,20 @@
   .bar.disabled{ opacity:.6; filter:grayscale(.1); pointer-events:none; }
 
   .circle{ width:36px; height:36px; border-radius:999px; background:#e9ecf4; display:grid; place-items:center; transition: all .25s ease; cursor:pointer; border:1px solid rgba(0,0,0,.06); }
-  .circle:hover{ background: color-mix(in oklab, var(--brand) 12%, #e9ecf4); box-shadow:0 0 12px rgba(124,58,237,.15); transform: scale(1.06); }
+  .circle:hover{
+    background: color-mix(in oklab, var(--brand) 12%, #e9ecf4);
+    box-shadow:0 0 12px rgba(124,58,237,.15);
+    transform: scale(1.06);
+  }
   .circle img, .circle svg{ width:16px; height:16px; }
 
-  .input{ display:flex; align-items:center; gap:10px; border:1px solid rgba(0,0,0,.06); border-radius:999px; padding:12px 16px; background:#fff; }
+  .input{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid rgba(0,0,0,.06);
+    border-radius:999px;
+    padding:12px 16px;
+    background:#fff;
+  }
   .input input{
     border:0; outline:0; background:transparent; width:100%;
     font-size:15px; color:var(--ink);
@@ -415,26 +404,76 @@
   .input input:disabled{ background:#fff; color:#a6adbd; }
   .input:focus-within{ box-shadow:0 0 0 3px rgba(124,58,237,.1); }
 
-  .send{ width:44px; height:44px; border-radius:999px; display:grid; place-items:center; background:var(--send-purple); border:none; cursor:pointer; color:#fff; transition: transform .25s ease, box-shadow .3s ease; }
+  .send{
+    width:44px; height:44px;
+    border-radius:999px;
+    display:grid; place-items:center;
+    background:var(--send-purple);
+    border:none;
+    cursor:pointer; color:#fff;
+    transition: transform .25s ease, box-shadow .3s ease;
+  }
   .send svg{ width:18px; height:18px; }
-  .send:hover{ transform:scale(1.08); box-shadow:0 0 14px rgba(124,58,237,.25); }
+  .send:hover{
+    transform:scale(1.08);
+    box-shadow:0 0 14px rgba(124,58,237,.25);
+  }
 
-  .popup { position: fixed; inset: 0; background: rgba(6, 8, 20, 0.45); display: none; align-items: center; justify-content: center; z-index: 1500; backdrop-filter: blur(6px); }
+  .popup{
+    position: fixed; inset: 0;
+    background: rgba(6, 8, 20, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1500;
+    backdrop-filter: blur(6px);
+  }
   .popup.show { display:flex; animation: fadeIn .14s ease-out; }
   @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-  .popup-content { width:min(440px,92vw); background:linear-gradient(180deg,#ffffff,#fbfbff); border:1px solid rgba(124,58,237,.18); border-radius:16px; box-shadow:0 18px 60px rgba(20,16,40,.18); padding:22px 20px 18px; transform: translateY(6px); animation: rise .18s ease-out forwards; }
+
+  .popup-content{
+    width:min(440px,92vw);
+    background:linear-gradient(180deg,#ffffff,#fbfbff);
+    border:1px solid rgba(124,58,237,.18);
+    border-radius:16px;
+    box-shadow:0 18px 60px rgba(20,16,40,.18);
+    padding:22px 20px 18px;
+    transform: translateY(6px);
+    animation: rise .18s ease-out forwards;
+  }
   @keyframes rise { to { transform: translateY(0) } }
+
   .popup-title{ margin:0; font-size:16.5px; font-weight:700; }
   .popup-desc{ margin:6px 0 0; color:#5f6472; font-size:14px; line-height:1.6; }
   .popup-buttons{ display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
-  .btn{ padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; border:1px solid transparent; transition: transform .06s ease, box-shadow .2s ease, background .2s ease; }
+  .btn{
+    padding:10px 14px;
+    border-radius:12px;
+    font-weight:600;
+    cursor:pointer;
+    border:1px solid transparent;
+    transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
+  }
   .btn:active{ transform: translateY(1px); }
   .btn-secondary{ background:#f3f4f8; color:#111; border-color: rgba(0,0,0,.06); }
   .btn-secondary:hover{ background:#e8eaf1; }
-  .btn-danger{ background: var(--send-purple); color:#fff; border-color: var(--send-purple); box-shadow: 0 6px 18px rgba(130,111,232,.25); }
-  .btn-danger:hover{ background: color-mix(in oklab, var(--send-purple) 88%, #000); border-color: color-mix(in oklab, var(--send-purple) 88%, #000); }
+  .btn-danger{
+    background: var(--send-purple);
+    color:#fff;
+    border-color: var(--send-purple);
+    box-shadow: 0 6px 18px rgba(130,111,232,.25);
+  }
+  .btn-danger:hover{
+    background: color-mix(in oklab, var(--send-purple) 88%, #000);
+    border-color: color-mix(in oklab, var(--send-purple) 88%, #000);
+  }
 
-  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .sr-only{
+    position:absolute; width:1px; height:1px;
+    padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0);
+    white-space:nowrap; border:0;
+  }
 
   .content.scaled{
     transform: scale(var(--ui-scale));
@@ -452,32 +491,27 @@
     box-shadow: var(--assistant-shadow);
     border-radius: 18px;
   }
-
   .wave-bars {
     display: flex;
     align-items: center;
     gap: 3px;
     height: 20px;
   }
-
   .wave-bar {
     width: 3px;
     background: linear-gradient(180deg, #826FE8, #7C3AED);
     border-radius: 2px;
     animation: wave 1.2s infinite ease-in-out;
   }
-
   .wave-bar:nth-child(1) { animation-delay: 0s; height: 8px; }
   .wave-bar:nth-child(2) { animation-delay: 0.1s; height: 12px; }
   .wave-bar:nth-child(3) { animation-delay: 0.2s; height: 16px; }
   .wave-bar:nth-child(4) { animation-delay: 0.3s; height: 12px; }
   .wave-bar:nth-child(5) { animation-delay: 0.4s; height: 8px; }
-
   @keyframes wave {
     0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
     50% { transform: scaleY(1.2); opacity: 1; }
   }
-
   .thinking-text {
     font-size: 14px;
     color: var(--brand);
@@ -486,61 +520,54 @@
   }
 
   /* -----------------------------------------
-   ✦ BETERE VERTICALE SPACING
------------------------------------------ */
+     ✦ BETERE VERTICALE SPACING IN RESPONSES
+  ----------------------------------------- */
 
-/* Algemene paragrafen */
-.bubble p {
-  margin: 0 0 10px 0;
-  line-height: 1.55;
-}
+  /* Algemene paragrafen */
+  .bubble p {
+    margin: 0 0 10px 0;
+    line-height: 1.55;
+  }
 
-/* Laatste paragraaf binnen bubble → geen extra ruimte */
-.bubble p:last-child {
-  margin-bottom: 0;
-}
+  .bubble p:last-child {
+    margin-bottom: 0;
+  }
 
-/* Headings spacing */
-.bubble h1,
-.bubble h2,
-.bubble h3,
-.bubble h4 {
-  margin-top: 18px;
-  margin-bottom: 8px;
-  font-weight: 700;
-}
+  /* Headings in antwoord */
+  .bubble h1,
+  .bubble h2,
+  .bubble h3,
+  .bubble h4 {
+    margin-top: 18px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .bubble h1:first-child,
+  .bubble h2:first-child,
+  .bubble h3:first-child,
+  .bubble h4:first-child {
+    margin-top: 0;
+  }
 
-.bubble h1:first-child,
-.bubble h2:first-child,
-.bubble h3:first-child,
-.bubble h4:first-child {
-  margin-top: 0;
-}
+  /* Lijsten */
+  .bubble ul,
+  .bubble ol {
+    margin: 4px 0 12px 20px;
+    padding-left: 24px;
+  }
+  .bubble li {
+    margin: 4px 0;
+    line-height: 1.45;
+  }
 
-/* Lijsten */
-.bubble ul,
-.bubble ol {
-  margin: 4px 0 12px 20px;
-  padding-left: 24px;
-}
-
-.bubble li {
-  margin: 4px 0;
-  padding-left: 24px;
-  line-height: 1.45;
-}
-
-/* Tussen paragrafen en lijsten netjes */
-.bubble p + ul,
-.bubble p + ol {
-  margin-top: -2px;   /* iets optisch compacter */
-}
-
-.bubble ul + p,
-.bubble ol + p {
-  margin-top: 10px;
-}
-
+  .bubble p + ul,
+  .bubble p + ol {
+    margin-top: -2px;
+  }
+  .bubble ul + p,
+  .bubble ol + p {
+    margin-top: 10px;
+  }
 </style>
 </head>
 
@@ -700,192 +727,183 @@
     return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   }
 
-function parseMessageWithCitations(text) {
-  // --- 1) Splits hoofdtekst vs. bronnen-sectie ---
-  const lines = text.split(/\r?\n/);
-  const headingIdx = lines.findIndex(l =>
-    /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim())
-  );
-
-  let mainText = text;
-  let sourcesText = '';
-
-  if (headingIdx !== -1) {
-    const headingLine = lines[headingIdx];
-    mainText = lines.slice(0, headingIdx).join('\n').trimEnd();
-
-    const afterHeaderSameLine = headingLine.replace(
-      /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, ''
+  function parseMessageWithCitations(text) {
+    // 1) Split hoofdtekst vs bronnen-sectie
+    const lines = text.split(/\r?\n/);
+    const headingIdx = lines.findIndex(l =>
+      /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?/i.test(l.trim())
     );
-    sourcesText = [afterHeaderSameLine, ...lines.slice(headingIdx + 1)]
-      .join('\n')
-      .trim();
-  }
 
-  // --- 2) Parse + de-dup bronnen ---
-  let parsed = [];
-  if (sourcesText) {
-    parsed = sourcesText
-      .split('\n')
-      .map(s => s.trim())
-      .filter(Boolean)
-      .map((line, i) => {
-        let clean = line.replace(/^-\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
-        const urlMatch = clean.match(/(https?:\/\/[^\s]+)$/i);
-        const url = urlMatch ? urlMatch[1] : '';
-        if (url) clean = clean.replace(url, '').trim();
-        const title = clean.split('|')[0].trim() || ('Document ' + (i + 1));
-        return { title, url };
-      });
-  }
-  const seen = new Set();
-  const sources = [];
-  parsed.forEach(s => {
-    const key = (s.title.toLowerCase() + '|' + (s.url || '')).trim();
-    if (!seen.has(key)) {
-      seen.add(key);
-      sources.push({ number: String(sources.length + 1), title: s.title, url: s.url || '' });
+    let mainText = text;
+    let sourcesText = '';
+
+    if (headingIdx !== -1) {
+      const headingLine = lines[headingIdx];
+      mainText = lines.slice(0, headingIdx).join('\n').trimEnd();
+
+      const afterHeaderSameLine = headingLine.replace(
+        /^\s*(?:\*\*\s*)?(Bronnen|Sources)\s*:\s*(?:\*\*)?\s*/i, ''
+      );
+      sourcesText = [afterHeaderSameLine, ...lines.slice(headingIdx + 1)]
+        .join('\n')
+        .trim();
     }
-  });
 
-  // --- 3) Markers → [n] (alleen als er bronnen zijn) ---
-const markerRe = /【[^】]*source】/g;
-let cleanText = mainText;
-const hasExplicitRefs = /\[\d+\]/.test(mainText);
-
-if (sources.length === 0) {
-  cleanText = cleanText.replace(markerRe, '');
-} else if (hasExplicitRefs) {
-  // Er zijn al [n] in de tekst → markers verwijderen om dubbele refs te voorkomen
-  cleanText = cleanText.replace(markerRe, '');
-} else {
-  // Geen [n] aanwezig → markers nummeren
-  let i = 0;
-  cleanText = cleanText.replace(markerRe, () => {
-    i += 1;
-    return ` [${Math.min(i, sources.length)}]`;
-  });
-}
-
-  // --- 3b) Documenttitels in hoofdtekst → [n] ---
-function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-sources.forEach((s, idx) => {
-  const n = idx + 1;
-  const t = escRx(s.title);
-  if (!t) return;
-  [
-    new RegExp(`“\\s*${t}\\s*”`, 'g'),
-    new RegExp(`"\\s*${t}\\s*"`, 'g'),
-    new RegExp(`'\\s*${t}\\s*'`, 'g'),
-    new RegExp(`\\b${t}\\b`, 'g'),
-  ].forEach(rx => { cleanText = cleanText.replace(rx, ` [${n}]`); });
-});
-
-
-
-  // --- 4) Hernummer bestaande [getal] → 1..k en dedup runs ---
-  if (sources.length > 0) {
-    let next = 1;
-    const remap = {};
-    cleanText = cleanText.replace(/\[(\d+)\]/g, (_, num) => {
-      if (!remap[num]) {
-        remap[num] = String(Math.min(next, sources.length));
-        next += 1;
+    // 2) Parse bronnen
+    let parsed = [];
+    if (sourcesText) {
+      parsed = sourcesText
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map((line, i) => {
+          let clean = line.replace(/^-\s*/, '').replace(/^\[\d+\]\s*/, '').trim();
+          const urlMatch = clean.match(/(https?:\/\/[^\s]+)$/i);
+          const url = urlMatch ? urlMatch[1] : '';
+          if (url) clean = clean.replace(url, '').trim();
+          const title = clean.split('|')[0].trim() || ('Document ' + (i + 1));
+          return { title, url };
+        });
+    }
+    const seen = new Set();
+    const sources = [];
+    parsed.forEach(s => {
+      const key = (s.title.toLowerCase() + '|' + (s.url || '')).trim();
+      if (!seen.has(key)) {
+        seen.add(key);
+        sources.push({ number: String(sources.length + 1), title: s.title, url: s.url || '' });
       }
-      return `[${remap[num]}]`;
     });
 
-    // Collapse duplicate consecutive citations like "[1] [2] [2]" → "[2]"
-  cleanText = cleanText.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
-    const last = (m.match(/\d+/g) || []).pop();
-    return ` [${last}]`;
-  });
-}
+    // 3) Markers → [n]
+    const markerRe = /【[^】]*source】/g;
+    let cleanText = mainText;
+    const hasExplicitRefs = /\[\d+\]/.test(mainText);
 
-  const html = renderMarkdown(cleanText);
-  return { html, sources };
-}
+    if (sources.length === 0) {
+      cleanText = cleanText.replace(markerRe, '');
+    } else if (hasExplicitRefs) {
+      cleanText = cleanText.replace(markerRe, '');
+    } else {
+      let i = 0;
+      cleanText = cleanText.replace(markerRe, () => {
+        i += 1;
+        return ` [${Math.min(i, sources.length)}]`;
+      });
+    }
 
-// Eenvoudige Markdown renderer die jouw regels afdekt:
-// - Koppen: # → h1, ## → h2
-// - Vet/italic: **, *
-// - Lijsten: "- " → <ul><li>, "1. " → <ol><li>
-// - Inline [n] → .citation-ref spans
-function renderMarkdown(md) {
-  const esc = s => {
-    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
-  };
-  let out = esc(md);
+    // 3b) Documenttitels in hoofdtekst → [n]
+    function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+    sources.forEach((s, idx) => {
+      const n = idx + 1;
+      const t = escRx(s.title);
+      if (!t) return;
+      [
+        new RegExp(`“\\s*${t}\\s*”`, 'g'),
+        new RegExp(`"\\s*${t}\\s*"`, 'g'),
+        new RegExp(`'\\s*${t}\\s*'`, 'g'),
+        new RegExp(`\\b${t}\\b`, 'g'),
+      ].forEach(rx => { cleanText = cleanText.replace(rx, ` [${n}]`); });
+    });
 
-  // Koppen (###### t/m #)
-  out = out.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
-  out = out.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
-  out = out.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
-  out = out.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
-  out = out.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
-  out = out.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+    // 4) Hernummer bestaande [n]
+    if (sources.length > 0) {
+      let next = 1;
+      const remap = {};
+      cleanText = cleanText.replace(/\[(\d+)\]/g, (_, num) => {
+        if (!remap[num]) {
+          remap[num] = String(Math.min(next, sources.length));
+          next += 1;
+        }
+        return `[${remap[num]}]`;
+      });
 
-  // Vet / cursief
-  out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
-  out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+      cleanText = cleanText.replace(/(?:\s*\[\d+\]){2,}/g, (m) => {
+        const last = (m.match(/\d+/g) || []).pop();
+        return ` [${last}]`;
+      });
+    }
 
-  // Lijsten
-  // Genummerd
-  out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
-    const items = m.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
-    return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
-  });
-  // Bullets
-  out = out.replace(/(?:^|\n)(-\s.+(?:\n-\s.+)*)/g, (m) => {
-    const items = m.trim().split(/\n/).map(l => l.replace(/^-\s+/, '').trim());
-    return '\n<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
-  });
+    const html = renderMarkdown(cleanText);
+    return { html, sources };
+  }
 
-  // Citaties [n] → badge spans
-  out = out.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
+  // Markdown → HTML
+  function renderMarkdown(md) {
+    const esc = s => {
+      const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+    };
+    let out = esc(md);
 
-  // Paragraaf-breaks
-  out = out.replace(/\n{2,}/g, '</p><p>');
-  out = '<p>' + out + '</p>';
-  out = out.replace(/<p>\s*<\/p>/g, '');
-  return out;
-}
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+    // Koppen
+    out = out.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+    out = out.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+    out = out.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+    out = out.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+    out = out.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+    out = out.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+
+    // Vet / cursief
+    out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+
+    // Lijsten
+    out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
+      const items = m.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
+      return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+    });
+    out = out.replace(/(?:^|\n)(-\s.+(?:\n-\s.+)*)/g, (m) => {
+      const items = m.trim().split(/\n/).map(l => l.replace(/^-\s+/, '').trim());
+      return '\n<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+    });
+
+    // Citaties [n]
+    out = out.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
+
+    // Paragraaf-breaks
+    out = out.replace(/\n{2,}/g, '</p><p>');
+    out = '<p>' + out + '</p>';
+    out = out.replace(/<p>\s*<\/p>/g, '');
+    return out;
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   function renderCitationsBlock(sources) {
-  if (!sources || sources.length === 0) {
+    if (!sources || sources.length === 0) {
+      return `
+        <div class="citations">
+          <div class="citations-header"><strong>Bronnen:</strong></div>
+          <div class="citation-list"><em>Geen</em></div>
+        </div>
+      `;
+    }
+    const items = sources.map(s => {
+      const open  = s.url
+        ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
+        : `<div class="citation-item" data-source="${s.number}">`;
+      const close = s.url ? `</a>` : `</div>`;
+      return `
+        ${open}
+          <span class="citation-ref" data-citation="${s.number}" title="Klik voor bron">${s.number}</span>
+          <div class="citation-content">
+            <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
+          </div>
+        ${close}
+      `;
+    }).join('');
     return `
       <div class="citations">
         <div class="citations-header"><strong>Bronnen:</strong></div>
-        <div class="citation-list"><em>Geen</em></div>
+        <div class="citation-list">${items}</div>
       </div>
     `;
   }
-  const items = sources.map(s => {
-    const open  = s.url
-      ? `<a class="citation-item" data-source="${s.number}" href="${s.url}" target="_blank" rel="noopener noreferrer">`
-      : `<div class="citation-item" data-source="${s.number}">`;
-    const close = s.url ? `</a>` : `</div>`;
-    return `
-      ${open}
-        <span class="citation-ref" data-citation="${s.number}" title="Klik voor bron">${s.number}</span>
-        <div class="citation-content">
-          <div class="citation-title">${escapeHtml(s.title || ('Document ' + s.number))}</div>
-        </div>
-      ${close}
-    `;
-  }).join('');
-  return `
-    <div class="citations">
-      <div class="citations-header"><strong>Bronnen:</strong></div>
-      <div class="citation-list">${items}</div>
-    </div>
-  `;
-}
 
   // ---------- UI Functions ----------
   function showTyping() {
@@ -1133,7 +1151,6 @@ function escapeHtml(text) {
     if(!ses) return;
     setCurrentId(id);
     chatlog.innerHTML='';
-    // No animation for history messages
     (ses.messages || []).forEach(m=> addMessage(m.text, m.who, new Date(m.at), false));
     if(ses.messages?.length){ hideHero(); hideCards(); } else { showHero(); showCards(); }
     renderHistory();
@@ -1155,46 +1172,36 @@ function escapeHtml(text) {
   }
 
   // Lange prompts per kaart
-const LONG_PROMPTS = {
-  timeoff: `How do I request time off and what is the approval timeline?`,
+  const LONG_PROMPTS = {
+    timeoff: `How do I request time off and what is the approval timeline?`,
+    payslip: `Where can I find my payslip and when is payday?`,
+    expenses: `How do I submit an expense claim and which receipts are required?`,
+    reset: `How do I reset my password and regain access to email?`,
+    sickleave: `How do I report sick and what are the availability rules?`,
+    travel: `How does travel reimbursement work and what is the mileage rate?`,
+    policies: `Where can I find the employee handbook / data privacy policy (GDPR)?`,
+    parental: `How do I request parental or maternity leave and what are the timelines?`
+  };
 
-  payslip: `Where can I find my payslip and when is payday?`,
+  function prefillFromCard(card, { autoSend = false } = {}) {
+    const key = card.getAttribute('data-key');
+    const prompt =
+      card.getAttribute('data-prompt') ||
+      (key ? LONG_PROMPTS[key] : '') ||
+      (card.querySelector('h3')?.textContent?.trim() || '');
 
-  expenses: `How do I submit an expense claim and which receipts are required?`,
+    promptInput.value = prompt;
+    const len = prompt.length;
+    promptInput.focus();
+    promptInput.setSelectionRange(len, len);
 
-  reset: `How do I reset my password and regain access to email?`,
-
-  sickleave: `How do I report sick and what are the availability rules?`,
-
-  travel: `How does travel reimbursement work and what is the mileage rate?`,
-
-  policies: `Where can I find the employee handbook / data privacy policy (GDPR)?`,
-
-  parental: `How do I request parental or maternity leave and what are the timelines?`
-};
-
-// Prefill helper (optioneel autoSend)
-function prefillFromCard(card, { autoSend = false } = {}) {
-  const key = card.getAttribute('data-key');
-  const prompt =
-    card.getAttribute('data-prompt') ||     // HTML override
-    (key ? LONG_PROMPTS[key] : '') ||       // bibliotheek
-    (card.querySelector('h3')?.textContent?.trim() || '');
-
-  promptInput.value = prompt;
-  const len = prompt.length;
-  promptInput.focus();
-  promptInput.setSelectionRange(len, len);
-
-  if (autoSend && prompt.trim() && typeof sendMessage === 'function') {
-    sendMessage();
+    if (autoSend && prompt.trim() && typeof sendMessage === 'function') {
+      sendMessage();
+    }
   }
-}
-
   cards.forEach(card => {
-    card.addEventListener('click', () => prefillFromCard(card /*, { autoSend: true }*/));
+    card.addEventListener('click', () => prefillFromCard(card));
   });
-
 
   // Modal clear
   let lastFocusedEl = null;
@@ -1282,40 +1289,35 @@ function prefillFromCard(card, { autoSend = false } = {}) {
     wrap.className = 'bubble-wrap';
 
     if (who === 'assistant') {
-      // Parse citations for assistant messages
       const { html, sources, headerLabel = 'Bronnen' } = parseMessageWithCitations(text);
-      
+
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
-      
+
       if (animate) {
-        // Typewriter effect for new messages
         bubble.innerHTML = '<span class="typing-cursor"></span>';
         wrap.appendChild(bubble);
         msg.appendChild(wrap);
         chatlog.appendChild(msg);
         chatlog.scrollTop = chatlog.scrollHeight;
-        
-        // Start typewriter animation
+
         typewriterEffect(bubble, html, sources, wrap, headerLabel);
       } else {
-        // Instant display for history
         bubble.innerHTML = html;
         wrap.appendChild(bubble);
-        
+
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
           citationsEl.innerHTML = renderCitationsBlock(sources, headerLabel);
           wrap.appendChild(citationsEl.firstElementChild);
           attachCitationHandlers(bubble, wrap, sources);
         }
-        
+
         msg.appendChild(wrap);
         chatlog.appendChild(msg);
         chatlog.scrollTop = chatlog.scrollHeight;
       }
     } else {
-      // User message - simple text
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
       bubble.textContent = text;
@@ -1334,7 +1336,7 @@ function prefillFromCard(card, { autoSend = false } = {}) {
       meta.appendChild(t);
       meta.appendChild(tick);
       wrap.appendChild(meta);
-      
+
       msg.appendChild(wrap);
       chatlog.appendChild(msg);
       chatlog.scrollTop = chatlog.scrollHeight;
@@ -1342,68 +1344,64 @@ function prefillFromCard(card, { autoSend = false } = {}) {
   }
 
   function typewriterEffect(bubble, html, sources, wrap, headerLabel) {
-    // Configuration
-    const CHARS_PER_FRAME = 3; // Higher = faster typing (3 chars at once is fast but smooth)
-    const FRAME_DELAY = 16; // ~60fps
-    
-    // Simpler: type HTML string directly
+    const CHARS_PER_FRAME = 3;
+    const FRAME_DELAY = 16;
+
     let currentIndex = 0;
     const cursor = bubble.querySelector('.typing-cursor');
-    
+
     function typeNextChunk() {
       if (currentIndex >= html.length) {
-        // Typing complete
         cursor?.remove();
         bubble.innerHTML = html;
-        
-        // Add citations
+
         if (sources.length > 0) {
           const citationsEl = document.createElement('div');
           citationsEl.innerHTML = renderCitationsBlock(sources, headerLabel);
           wrap.appendChild(citationsEl.firstElementChild);
           attachCitationHandlers(bubble, wrap, sources);
         }
-        
+
         chatlog.scrollTop = chatlog.scrollHeight;
         return;
       }
-      
+
       const endIndex = Math.min(currentIndex + CHARS_PER_FRAME, html.length);
       const chunk = html.substring(0, endIndex);
       bubble.innerHTML = chunk + '<span class="typing-cursor"></span>';
-      
+
       currentIndex = endIndex;
-      
+
       if (chatlog.scrollHeight - chatlog.scrollTop - chatlog.clientHeight < 100) {
         chatlog.scrollTop = chatlog.scrollHeight;
       }
-      
+
       requestAnimationFrame(() => {
         setTimeout(typeNextChunk, FRAME_DELAY);
       });
     }
-    
+
     typeNextChunk();
   }
 
   function attachCitationHandlers(bubble, wrap, sources) {
-  const list = wrap.querySelector('.citation-list');
-  if (!list) return;
+    const list = wrap.querySelector('.citation-list');
+    if (!list) return;
 
-  bubble.querySelectorAll('.citation-ref').forEach(ref => {
-    ref.addEventListener('click', function () {
-      const num = this.getAttribute('data-citation');
+    bubble.querySelectorAll('.citation-ref').forEach(ref => {
+      ref.addEventListener('click', function () {
+        const num = this.getAttribute('data-citation');
 
-      const item = list.querySelector(`.citation-item[data-source="${num}"]`);
-      if (item) {
-        list.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
-        item.classList.add('highlight');
-        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setTimeout(() => item.classList.remove('highlight'), 1500);
-      }
+        const item = list.querySelector(`.citation-item[data-source="${num}"]`);
+        if (item) {
+          list.querySelectorAll('.citation-item').forEach(c => c.classList.remove('highlight'));
+          item.classList.add('highlight');
+          item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => item.classList.remove('highlight'), 1500);
+        }
+      });
     });
-  });
-}
+  }
 
   let sending = false;
   async function sendMessage() {
@@ -1428,7 +1426,6 @@ function prefillFromCard(card, { autoSend = false } = {}) {
       const result = await callAgent(text, current.threadId);
       hideTyping();
       const reply = String(result.replyText || 'OK');
-      // Enable typewriter animation for new messages
       addMessage(reply, 'assistant', new Date(), true);
       persistMessage(reply, 'assistant');
 
@@ -1444,7 +1441,6 @@ function prefillFromCard(card, { autoSend = false } = {}) {
       hideTyping();
       const errMsg = toDisplayString(e?.message || e || 'Er ging iets mis met de verbinding.');
       const shown = '⚠️ Serverfout: ' + errMsg;
-      // No animation for error messages
       addMessage(shown, 'assistant', new Date(), false);
       persistMessage(shown, 'assistant');
     }finally{
