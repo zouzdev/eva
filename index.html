@@ -863,11 +863,29 @@
   out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
   out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
 
-  // Genummerde lijsten
-  out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
-    const items = m.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
-    return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
-  });
+// Genummerde lijsten – respecteer expliciete nummers (1., 2., 3.)
+// zodat losse blokken niet allemaal weer bij 1 beginnen.
+out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
+  const lines = m.trim().split(/\n/);
+
+  // Startwaarde voor <ol> (eerste nummer in het blok)
+  const firstMatch = lines[0].match(/^(\d+)\.\s+/);
+  const start = firstMatch ? parseInt(firstMatch[1], 10) : 1;
+
+  const itemsHtml = lines.map(l => {
+    const match = l.match(/^(\d+)\.\s+(.+)$/);
+    if (!match) {
+      return `<li>${l.trim()}</li>`;
+    }
+    const num  = parseInt(match[1], 10);
+    const text = match[2].trim();
+    // value="n" zorgt dat ook losse <ol> blokken de juiste nummering tonen
+    return `<li value="${num}">${text}</li>`;
+  }).join('');
+
+  return `\n<ol start="${start}">${itemsHtml}</ol>`;
+});
+
 
   // Bullets (nu hyphen aan kolom 0)
   out = out.replace(/(?:^|\n)(-\s.+(?:\n-\s.+)*)/g, (m) => {
