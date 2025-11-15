@@ -841,45 +841,50 @@
     return { html, sources };
   }
 
-  // Markdown → HTML
-  function renderMarkdown(md) {
-    const esc = s => {
-      const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
-    };
-    let out = esc(md);
+ function renderMarkdown(md) {
+  // 🔧 1) Normaliseer bullets:
+  //    Alles wat begint met (spaties) + '-' of '–' wordt echte "- " aan het begin
+  md = md.replace(/^[ \t]*[–-]\s+(.*)$/gm, '- $1');
 
-    // Koppen
-    out = out.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
-    out = out.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
-    out = out.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
-    out = out.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
-    out = out.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
-    out = out.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+  const esc = s => {
+    const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  };
+  let out = esc(md);
 
-    // Vet / cursief
-    out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
-    out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  // Koppen
+  out = out.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
+  out = out.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
+  out = out.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
+  out = out.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  out = out.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+  out = out.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
 
-    // Lijsten
-    out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
-      const items = m.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
-      return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
-    });
-    out = out.replace(/(?:^|\n)(-\s.+(?:\n-\s.+)*)/g, (m) => {
-      const items = m.trim().split(/\n/).map(l => l.replace(/^-\s+/, '').trim());
-      return '\n<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
-    });
+  // Vet / cursief
+  out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
+  out = out.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
 
-    // Citaties [n]
-    out = out.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
+  // Genummerde lijsten
+  out = out.replace(/(?:^|\n)(\d+\.\s.+(?:\n\d+\.\s.+)*)/g, (m) => {
+    const items = m.trim().split(/\n/).map(l => l.replace(/^\d+\.\s+/, '').trim());
+    return '\n<ol>' + items.map(i => `<li>${i}</li>`).join('') + '</ol>';
+  });
 
-    // Paragraaf-breaks
-    out = out.replace(/\n{2,}/g, '</p><p>');
-    out = '<p>' + out + '</p>';
-    out = out.replace(/<p>\s*<\/p>/g, '');
-    return out;
-  }
+  // Bullets (nu hyphen aan kolom 0)
+  out = out.replace(/(?:^|\n)(-\s.+(?:\n-\s.+)*)/g, (m) => {
+    const items = m.trim().split(/\n/).map(l => l.replace(/^-\s+/, '').trim());
+    return '\n<ul>' + items.map(i => `<li>${i}</li>`).join('') + '</ul>';
+  });
+
+  // Citaties [n]
+  out = out.replace(/\[(\d+)\]/g, '<span class="citation-ref" data-citation="$1" title="Klik voor bron">$1</span>');
+
+  // Paragrafen
+  out = out.replace(/\n{2,}/g, '</p><p>');
+  out = '<p>' + out + '</p>';
+  out = out.replace(/<p>\s*<\/p>/g, '');
+  return out;
+}
 
   function escapeHtml(text) {
     const div = document.createElement('div');
