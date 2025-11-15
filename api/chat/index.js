@@ -46,11 +46,12 @@ module.exports = async function (context, req) {
 
 function cors(){
   return {
-    "Access-Control-Allow-Origin": "https://red-ocean-056975003.3.azurestaticapps.net",
+    "Access-Control-Allow-Origin": "https://eva-test-zao.netlify.app",
     "Access-Control-Allow-Methods": "POST,OPTIONS",
     "Access-Control-Allow-Headers": "content-type",
   };
 }
+
 
 
 
