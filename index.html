@@ -113,7 +113,11 @@
   }
   .sb-overlay.show{ display:block; }
 
-  .page{ min-height: 100dvh; transition: margin-right .18s ease; }
+  .page{ min-height: 100dvh; transition: margin-right .18s ease; display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  transition: margin-right .18s ease;}
+  
   body.sb-open .page{ margin-right: var(--sb-w); }
 
   .sb-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 6px 6px 10px; }
@@ -147,9 +151,13 @@
 
   /* Main content */
   .wrap{
+    flex: 1; /* Neemt alle beschikbare ruimte in */
+    display: flex;
+    flex-direction: column;
     max-width: 1160px;
     margin: 0 auto;
-    padding: 20px 24px calc(30px + env(safe-area-inset-bottom));
+    width: 100%;
+    padding: 20px 24px 0; /* Verwijder de grote bottom padding */
   }
 
   .sb-toggle{
@@ -205,7 +213,7 @@
   .card h3{ margin:8px 0 6px; font-size:18px; font-weight:600; letter-spacing:.2px; }
   .card p{ margin:0; color:#7a8190; font-size:13.5px; line-height:1.5; max-width:92%; font-weight:400;}
 
-  .chatlog{ max-width:980px; margin:8px auto 0; padding:0 8px; }
+  .chatlog{ flex: 1; max-width:980px; margin:8px auto 0; padding:0 8px; }
   .msg{ display:flex; gap:10px; align-items:flex-end; margin: 12px 0; }
   .msg.assistant{ justify-content:flex-start; }
   .msg.user{ justify-content:flex-end; }
@@ -353,18 +361,24 @@
   }
 
   .composer{
-    position: fixed;
-    left: 50%;
-    bottom: max(20px, env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    width: min(980px, 96vw);
-    z-index: 1000;
-    transition: filter .18s ease, transform .18s ease, width .18s ease;
-  }
+      position: sticky; /* Verander fixed naar sticky */
+      bottom: 0;
+      margin-top: auto; /* Duwt zichzelf naar de bodem van de flexbox */
+      padding-bottom: max(20px, env(safe-area-inset-bottom));
+      background: #fff; /* Voorkom dat chattekst onder de bar door schijnt */
+      
+      /* Verwijder de transform: translateX(-50%) en left: 50% 
+         omdat sticky werkt t.o.v. de parent container */
+      left: auto;
+      transform: none; 
+      width: 100%;
+      max-width: 980px;
+      align-self: center;
+      z-index: 1000;
+  
   body.sb-open .composer{
-    transform: translateX(calc(-50% - (var(--sb-w) / 2)));
-    width: min(980px, calc(96vw - var(--sb-w)));
-    filter: blur(0.2px);
+    transform: none;
+    width: 100%;
   }
   .composer .bar{
     width:100%;
