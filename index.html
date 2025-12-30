@@ -112,7 +112,7 @@
   }
   .sb-overlay.show{ display:block; }
 
-  .page{ min-height: 100dvh; transition: margin-right .18s ease; }
+  .page{ display: flex; flex-direction: column; min-height: 100dvh;}
   body.sb-open .page{ margin-right: var(--sb-w); }
 
   .sb-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 6px 6px 10px; }
@@ -146,9 +146,10 @@
 
   /* Main content */
   .wrap{
-    max-width: 1160px;
-    margin: 0 auto;
-    padding: 20px 24px 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
   }
 
   .sb-toggle{
@@ -204,7 +205,13 @@
   .card h3{ margin:8px 0 6px; font-size:18px; font-weight:600; letter-spacing:.2px; }
   .card p{ margin:0; color:#7a8190; font-size:13.5px; line-height:1.5; max-width:92%; font-weight:400;}
 
-  .chatlog{ max-width:980px; margin:8px auto 0; padding: 0 8px 30px 8px;  }
+  .chatlog{ flex: 1; /* Neemt alle beschikbare ruimte in */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Berichten beginnen bovenaan */
+  margin-bottom: 120px; /* Ruimte reserveren voor de fixed input bar */
+  }
+  
   .msg{ display:flex; gap:10px; align-items:flex-end; margin: 12px 0; }
   .msg.assistant{ justify-content:flex-start; }
   .msg.user{ justify-content:flex-end; }
@@ -352,13 +359,9 @@
   }
 
   .composer{
-    position: fixed;
-    left: 50%;
-    bottom: max(20px, env(safe-area-inset-bottom));
-    transform: translateX(-50%);
-    width: min(980px, 96vw);
-    z-index: 1000;
-    transition: filter .18s ease, transform .18s ease, width .18s ease;
+    background: linear-gradient(to top, #fff 60%, transparent);
+    padding-bottom: 20px;
+    width: 100%;
   }
   body.sb-open .composer{
     transform: translateX(calc(-50% - (var(--sb-w) / 2)));
@@ -478,8 +481,9 @@
   }
 
   .content.scaled{
-    transform: scale(var(--ui-scale));
-    transform-origin: top center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Thinking indicator - Sound Wave Animation */
